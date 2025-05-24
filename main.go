@@ -47,11 +47,16 @@ const (
 	chapsFileFname = "chapters_nugs_dl_tmp.txt"
 	durRegex       = `Duration: ([\d:.]+)`
 	bitrateRegex   = `[\w]+(?:_(\d+)k_v\d+)`
+	// history file
+	historyFileName      = "history"
+	historySuffixAudio     = "Aud"
+	historySuffixVideo     = "Vid"
+	historyFileExtension = ".txt"
 )
 
 var (
-	jar, _ = cookiejar.New(nil)
-	client = &http.Client{Jar: jar}
+	jar, _               = cookiejar.New(nil)
+	client               = &http.Client{Jar: jar}
 )
 
 var regexStrings = [11]string{
@@ -940,6 +945,17 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 		tracks = meta.Tracks
 	}
 
+	alreadyDownloaded, err := checkHistory(albumID, getHistoryFileName(meta.ArtistID, historySuffixAudio, meta.ArtistName))
+	if err != nil {
+		fmt.Println("Error checking history:", err)
+		return nil
+	}
+
+	if alreadyDownloaded {
+		fmt.Println("Album already downloaded. Skipping.")
+		return nil
+	}
+
 	trackTotal := len(tracks)
 
 	skuID := getVideoSku(meta.Products)
@@ -965,7 +981,8 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 			"Album folder name was chopped because it exceeds 120 characters.")
 	}
 	albumPath := filepath.Join(cfg.OutPath, sanitise(albumFolder))
-	err := makeDirs(albumPath)
+
+	err = makeDirs(albumPath)
 	if err != nil {
 		fmt.Println("Failed to make album folder.")
 		return err
@@ -978,6 +995,14 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 			handleErr("Track failed.", err, false)
 		}
 	}
+
+	// append the item to the history
+	err = appendToHistory(albumID, getHistoryFileName(meta.ArtistID, historySuffixAudio, meta.ArtistName))
+	if err != nil {
+		fmt.Println("Error updating history:", err)
+		return nil
+	}
+
 	return nil
 }
 
@@ -1596,6 +1621,41 @@ func paidLstream(query, uguID string, cfg *Config, streamParams *StreamParams) e
 	return err
 }
 
+// appendToHistory adds the URL to the history file.
+func appendToHistory(url, historyFile string) error {
+	file, err := os.OpenFile(historyFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = file.WriteString(url + "\n")
+	return err
+}
+
+// checkHistory checks if the URL is already in the history file.
+func checkHistory(url, historyFile string) (bool, error) {
+	file, err := os.Open(historyFile)
+	if os.IsNotExist(err) {
+		return false, nil // No history yet
+	} else if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		if scanner.Text() == url {
+			return true, nil
+		}
+	}
+	return false, scanner.Err()
+}
+
+func getHistoryFileName(artistId int, hType, artistName string) string {
+	return strconv.Itoa(artistId) + "_" + hType + "_" + historyFileName + "(" + artistName + ")" + historyFileExtension
+}
+
 func init() {
 	fmt.Println(`
  _____                ____                _           _         
@@ -1654,13 +1714,17 @@ func main() {
 	streamParams := parseStreamParams(userId, subInfo, isPromo)
 	albumTotal := len(cfg.Urls)
 	var itemErr error
+
 	for albumNum, _url := range cfg.Urls {
+
 		fmt.Printf("Item %d of %d:\n", albumNum+1, albumTotal)
 		itemId, mediaType := checkUrl(_url)
+
 		if itemId == "" {
 			fmt.Println("Invalid URL:", _url)
 			continue
 		}
+
 		switch mediaType {
 		case 0:
 			itemErr = album(itemId, cfg, streamParams, nil)
@@ -1679,6 +1743,7 @@ func main() {
 		}
 		if itemErr != nil {
 			handleErr("Item failed.", itemErr, false)
+			continue
 		}
 	}
 }
