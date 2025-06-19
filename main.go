@@ -252,7 +252,17 @@ func parseCfg() (*Config, error) {
 		return nil, err
 	}
 	cfg.ForceVideo = args.ForceVideo
-	cfg.SkipVideos = args.SkipVideos
+	//cfg.SkipVideos = args.SkipVideos
+
+	if args.SkipVideos == true || args.AudioOnly == true{
+		cfg.SkipVideos = true
+	}
+
+	if args.VideoOnly == true {
+		cfg.VideoOnly = true
+		cfg.ForceVideo = true
+	}
+
 	cfg.SkipChapters = args.SkipChapters
 	return cfg, nil
 }
@@ -931,10 +941,12 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 	var (
 		meta   *AlbArtResp
 		tracks []Track
+		historySuffix string
 	)
 	if albumID == "" {
 		meta = artResp
 		tracks = meta.Songs
+		albumID = strconv.Itoa(artResp.ContainerID)
 	} else {
 		_meta, err := getAlbumMeta(albumID)
 		if err != nil {
@@ -945,17 +957,6 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 		tracks = meta.Tracks
 	}
 
-	alreadyDownloaded, err := checkHistory(albumID, getHistoryFileName(meta.ArtistID, historySuffixAudio, meta.ArtistName))
-	if err != nil {
-		fmt.Println("Error checking history:", err)
-		return nil
-	}
-
-	if alreadyDownloaded {
-		fmt.Println("Album already downloaded. Skipping.")
-		return nil
-	}
-
 	trackTotal := len(tracks)
 
 	skuID := getVideoSku(meta.Products)
@@ -964,15 +965,39 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 		return errors.New("release has no tracks or videos")
 	}
 
+	historySuffix = historySuffixAudio
+	if skuID != 0 {
+		historySuffix = historySuffixVideo
+	}
+
+	alreadyDownloaded, err := checkHistory(albumID, getHistoryFileName(meta.ArtistID, historySuffix, meta.ArtistName))
+	if err != nil {
+		fmt.Println("Error checking history:", err)
+		return nil
+	}
+
+	//todo update the feedback text here
+	if alreadyDownloaded {
+		fmt.Println("Album already downloaded. Skipping.")
+		return nil
+	}
+
 	if skuID != 0 {
 		if cfg.SkipVideos {
 			fmt.Println("Video-only album, skipped.")
 			return nil
 		}
 		if cfg.ForceVideo || trackTotal < 1 {
+			// here fec
 			return video(albumID, "", cfg, streamParams, meta, false)
 		}
 	}
+
+	if cfg.VideoOnly == true {
+		fmt.Println("Audio only album, skipped.")
+		return nil
+	}
+
 	albumFolder := meta.ArtistName + " - " + strings.TrimRight(meta.ContainerInfo, " ")
 	fmt.Println(albumFolder)
 	if len(albumFolder) > 120 {
@@ -1445,6 +1470,7 @@ func parseLstreamMeta(_meta *ArtistMeta) *AlbumMeta {
 }
 
 func video(videoID, uguID string, cfg *Config, streamParams *StreamParams, _meta *AlbArtResp, isLstream bool) error {
+
 	var (
 		chapsAvail bool
 		skuID int
@@ -1462,6 +1488,17 @@ func video(videoID, uguID string, cfg *Config, streamParams *StreamParams, _meta
 			return err
 		}
 		meta = m.Response
+	}
+
+	alreadyDownloaded, err := checkHistory(videoID, getHistoryFileName(meta.ArtistID, historySuffixVideo, meta.ArtistName))
+	if err != nil {
+		fmt.Println("Error checking history:", err)
+		return nil
+	}
+
+	if alreadyDownloaded {
+		fmt.Println("Album already downloaded. Skipping.")
+		return nil
 	}
 
 	if !cfg.SkipChapters {
@@ -1570,6 +1607,14 @@ func video(videoID, uguID string, cfg *Config, streamParams *StreamParams, _meta
 	if err != nil {
 		fmt.Println("Failed to delete TS.")
 	}
+
+	// append the item to the history
+	err = appendToHistory(videoID, getHistoryFileName(meta.ArtistID, historySuffixVideo, meta.ArtistName))
+	if err != nil {
+		fmt.Println("Error updating history:", err)
+		return nil
+	}
+
 	return nil
 }
 

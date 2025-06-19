@@ -23,6 +23,7 @@ type Config struct {
 	FfmpegNameStr   string
 	ForceVideo      bool
 	SkipVideos		bool
+	VideoOnly		bool
 	SkipChapters	bool
 }
 
@@ -33,6 +34,8 @@ type Args struct {
 	OutPath      string   `arg:"-o" help:"Where to download to. Path will be made if it doesn't already exist."`
 	ForceVideo   bool     `arg:"--force-video" help:"Forces video when it co-exists with audio in release URLs."`
 	SkipVideos   bool     `arg:"--skip-videos" help:"Skips videos in artist URLs."`
+	AudioOnly    bool     `arg:"--audio-only" help:"Download only audio in artist URLs."`
+	VideoOnly    bool     `arg:"--video-only" help:"Download only video in artist URLs."`
 	SkipChapters bool     `arg:"--skip-chapters" help:"Skips chapters for videos."`
 }
 
