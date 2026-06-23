@@ -1,0 +1,4 @@
+config.json
+*.exe
+*_state.json
+downloads/
