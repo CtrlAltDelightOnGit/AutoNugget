@@ -1,0 +1,79 @@
+name: Build and publish
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # create / update GitHub Releases
+      packages: write   # push to GHCR
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Lowercase the owner for GHCR (image names must be all-lowercase)
+      - name: Set lowercase owner
+        run: echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
+
+      # ── Docker image → GHCR ──────────────────────────────────────
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ env.OWNER_LC }}/autonugget:latest
+            ghcr.io/${{ env.OWNER_LC }}/autonugget:${{ github.sha }}
+
+      # ── Cross-compiled binaries ───────────────────────────────────
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build binaries
+        run: |
+          GOOS=linux   GOARCH=amd64 go build -ldflags="-s -w" -o nugs-dl-linux-amd64 .
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o nugs-dl-windows-amd64.exe .
+
+      # ── GitHub Release (auto-updates on every push to main) ───────
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest Build
+          make_latest: true
+          body: |
+            Auto-built from the latest commit on `main`.
+
+            ## Downloads
+
+            | File | Platform |
+            |---|---|
+            | `nugs-dl-windows-amd64.exe` | Windows 64-bit |
+            | `nugs-dl-linux-amd64` | Linux 64-bit |
+
+            **Windows:** also requires ffmpeg — install with `winget install ffmpeg` then set `"useFfmpegEnvVar": true` in `config.json`.
+
+            **Linux:** also requires ffmpeg — `apt install ffmpeg` (or distro equivalent) then set `"useFfmpegEnvVar": true` in `config.json`.
+
+            ## Docker (Unraid / any Docker host)
+
+            ```bash
+            docker pull ghcr.io/${{ env.OWNER_LC }}/autonugget:latest
+            ```
+
+            No build step required. ffmpeg is included in the image.
+          files: |
+            nugs-dl-linux-amd64
+            nugs-dl-windows-amd64.exe

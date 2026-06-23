@@ -6,6 +6,18 @@ Built on top of [Syco54645/Nugs-Downloader](https://github.com/Syco54645/Nugs-Do
 
 ---
 
+## Downloads
+
+| Platform | File | Notes |
+|---|---|---|
+| Windows | [`nugs-dl-windows-amd64.exe`](https://github.com/CtrlAltDelightOnGit/AutoNugget/releases/latest) | Also requires ffmpeg — `winget install ffmpeg` |
+| Linux | [`nugs-dl-linux-amd64`](https://github.com/CtrlAltDelightOnGit/AutoNugget/releases/latest) | Also requires ffmpeg — `apt install ffmpeg` |
+| Docker / Unraid | `docker pull ghcr.io/ctrlaltdelightongit/autonugget:latest` | ffmpeg included — no build step |
+
+> Use the **[Setup Tools](https://ctrlaltdelightongit.github.io/AutoNugget/)** page to generate your `config.json` and get copy-paste commands for your platform.
+
+---
+
 ## How It Works
 
 1. You configure a watchlist of Nugs.net artist IDs in `config.json`
@@ -141,23 +153,17 @@ To run unattended, set up a Task Scheduler task that runs `nugs-dl.exe poll` at 
 
 ### Running on Docker / Unraid
 
-**1. Clone and build:**
+No build step required — pull the pre-built image directly:
 
-```bash
-git clone https://github.com/CtrlAltDelightOnGit/AutoNugget
-cd AutoNugget
-docker build -t autonugget .
-```
-
-**2. Create your appdata directory and drop in your config:**
+**1. Create your appdata directory and config:**
 
 ```bash
 mkdir -p /mnt/user/appdata/autonugget
-# copy your config.json to /mnt/user/appdata/autonugget/config.json
-# ensure "outPath": "downloads" in the config so files land in the mounted volume
+# Create config.json — use the Setup Tools page or copy the example above.
+# Ensure "outPath": "downloads" and "useFfmpegEnvVar": true
 ```
 
-**3. Run the container:**
+**2. Pull and run:**
 
 ```bash
 docker run -d \
@@ -166,24 +172,25 @@ docker run -d \
   -v /mnt/user/appdata/autonugget/config.json:/app/config.json:ro \
   -v /mnt/user/appdata/autonugget/state.json:/app/auto_nugget_state.json \
   -v /mnt/user/media/Nugs:/app/downloads \
-  autonugget
+  ghcr.io/ctrlaltdelightongit/autonugget:latest
 ```
 
-The container defaults to poll mode. To use CLI mode instead, pass a URL as an argument:
+The container defaults to poll mode. For one-off CLI downloads:
 
 ```bash
 docker run --rm \
   -v /mnt/user/appdata/autonugget/config.json:/app/config.json:ro \
   -v /mnt/user/media/Nugs:/app/downloads \
-  autonugget https://play.nugs.net/release/23329
+  ghcr.io/ctrlaltdelightongit/autonugget:latest \
+  https://play.nugs.net/release/23329
 ```
 
 **Managing the container:**
 
 ```bash
-docker logs -f autonugget                                                        # follow live logs
-docker restart autonugget                                                        # restart after a config change
-git pull && docker build -t autonugget . && docker restart autonugget           # update to latest
+docker logs -f autonugget                                      # follow live logs
+docker restart autonugget                                      # restart after a config change
+docker pull ghcr.io/ctrlaltdelightongit/autonugget:latest && docker restart autonugget  # update
 ```
 
 ### First-Run Behavior

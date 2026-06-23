@@ -666,7 +666,7 @@ function genCli() {
     cmd = `docker run --rm \\\n` +
           `  -v ${cfgPath}:/app/config.json:ro \\\n` +
           `  -v ${dlPath}:/app/downloads \\\n` +
-          `  autonugget \\\n` +
+          `  ghcr.io/ctrlaltdelightongit/autonugget:latest \\\n` +
           `  ` + argParts.join(' \\\n  ');
   }
 
