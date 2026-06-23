@@ -1,7 +1,5 @@
 package main
 
-type Transport struct{}
-
 type WriteCounter struct {
 	Total      int64
 	TotalStr   string

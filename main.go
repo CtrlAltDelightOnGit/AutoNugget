@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"net/http"
 	"net/http/cookiejar"
@@ -52,6 +51,12 @@ const (
 	historySuffixAudio     = "Aud"
 	historySuffixVideo     = "Vid"
 	historyFileExtension = ".txt"
+	// folder/filename length limits
+	maxFolderNameLen    = 120
+	maxVideoFilenameLen = 110
+	// poll defaults
+	defaultStateFile        = "auto_nugget_state.json"
+	defaultPollIntervalMins = 60
 )
 
 var (
@@ -252,7 +257,6 @@ func parseCfg() (*Config, error) {
 		return nil, err
 	}
 	cfg.ForceVideo = args.ForceVideo
-	//cfg.SkipVideos = args.SkipVideos
 
 	if args.SkipVideos == true || args.AudioOnly == true{
 		cfg.SkipVideos = true
@@ -268,7 +272,7 @@ func parseCfg() (*Config, error) {
 }
 
 func readConfig() (*Config, error) {
-	data, err := ioutil.ReadFile("config.json")
+	data, err := os.ReadFile("config.json")
 	if err != nil {
 		return nil, err
 	}
@@ -722,39 +726,6 @@ func getKey(keyUrl string) ([]byte, error) {
 	return buf, nil
 }
 
-// func decryptTrack(key, iv []byte, inPath, outPath string) error {
-// 	var stream cipher.Stream
-// 	fmt.Println("Decrypting...")
-// 	in_f, err := os.Open(inPath)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	block, err := aes.NewCipher([]byte(key))
-// 	if err != nil {
-// 		in_f.Close()
-// 		return err
-// 	}
-// 	stream = cipher.NewCTR(block, []byte(iv))
-// 	reader := &cipher.StreamReader{S: stream, R: in_f}
-// 	out_f, err := os.Create(outPath)
-// 	if err != nil {
-// 		in_f.Close()
-// 		return err
-// 	}
-// 	defer out_f.Close()
-// 	_, err = io.Copy(out_f, reader)
-// 	if err != nil {
-// 		in_f.Close()
-// 		return err
-// 	}
-// 	in_f.Close()
-// 	err = os.Remove(inPath)
-// 	if err != nil {
-// 		fmt.Println("Failed to delete encrypted track.")
-// 	}
-// 	return nil
-// }
 
 func pkcs5Trimming(data []byte) []byte {
 	padding := data[len(data)-1]
@@ -1000,8 +971,8 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 
 	albumFolder := meta.ArtistName + " - " + strings.TrimRight(meta.ContainerInfo, " ")
 	fmt.Println(albumFolder)
-	if len(albumFolder) > 120 {
-		albumFolder = albumFolder[:120]
+	if len(albumFolder) > maxFolderNameLen {
+		albumFolder = albumFolder[:maxFolderNameLen]
 		fmt.Println(
 			"Album folder name was chopped because it exceeds 120 characters.")
 	}
@@ -1022,7 +993,7 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 	}
 
 	// append the item to the history
-	err = appendToHistory(albumID, getHistoryFileName(meta.ArtistID, historySuffixAudio, meta.ArtistName))
+	err = appendToHistory(albumID, getHistoryFileName(meta.ArtistID, historySuffix, meta.ArtistName))
 	if err != nil {
 		fmt.Println("Error updating history:", err)
 		return nil
@@ -1077,8 +1048,8 @@ func playlist(plistId, legacyToken string, cfg *Config, streamParams *StreamPara
 	meta := _meta.Response
 	plistName := meta.PlayListName
 	fmt.Println(plistName)
-	if len(plistName) > 120 {
-		plistName = plistName[:120]
+	if len(plistName) > maxFolderNameLen {
+		plistName = plistName[:maxFolderNameLen]
 		fmt.Println(
 			"Playlist folder name was chopped because it exceeds 120 characters.")
 	}
@@ -1507,10 +1478,10 @@ func video(videoID, uguID string, cfg *Config, streamParams *StreamParams, _meta
 	
 	videoFname := meta.ArtistName + " - " + strings.TrimRight(meta.ContainerInfo, " ")
 	fmt.Println(videoFname)
-	if len(videoFname) > 110 {
-		videoFname = videoFname[:110]
+	if len(videoFname) > maxVideoFilenameLen {
+		videoFname = videoFname[:maxVideoFilenameLen]
 		fmt.Println(
-			"Video filename was chopped because it exceeds 120 characters.")
+			"Video filename was chopped because it exceeds 110 characters.")
 	}
 	if isLstream {
 		skuID = getLstreamSku(meta.ProductFormatList)

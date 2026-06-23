@@ -8,10 +8,31 @@ import (
 	"time"
 )
 
+func validatePollConfig(cfg *Config) error {
+	if cfg.Email == "" || cfg.Password == "" {
+		return fmt.Errorf("poll: email and password are required in config.json")
+	}
+	if len(cfg.Watchlist) == 0 {
+		return fmt.Errorf("poll: watchlist is empty — add at least one artist to config.json")
+	}
+	for i, wa := range cfg.Watchlist {
+		if wa.ArtistID == "" {
+			return fmt.Errorf("poll: watchlist[%d] has empty artistId", i)
+		}
+		if wa.Format != -1 && (wa.Format < 1 || wa.Format > 5) {
+			return fmt.Errorf("poll: watchlist[%d] has invalid format %d (must be 1–5 or -1 for global)", i, wa.Format)
+		}
+	}
+	return nil
+}
+
 func runPollMode() {
 	cfg, err := readConfig()
 	if err != nil {
 		handleErr("Failed to read config.", err, true)
+	}
+	if err := validatePollConfig(cfg); err != nil {
+		log.Fatalf("[poll] config error: %v", err)
 	}
 	if cfg.Format == 0 {
 		cfg.Format = 4
@@ -56,11 +77,11 @@ func runPollMode() {
 func runPoller(cfg *Config, streamParams *StreamParams) {
 	stateFile := cfg.StateFilePath
 	if stateFile == "" {
-		stateFile = "auto_nugget_state.json"
+		stateFile = defaultStateFile
 	}
 	interval := cfg.PollIntervalMins
 	if interval <= 0 {
-		interval = 60
+		interval = defaultPollIntervalMins
 	}
 	log.Printf("[poll] starting; %d artists, interval: %d min, state: %s",
 		len(cfg.Watchlist), interval, stateFile)
