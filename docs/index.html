@@ -376,7 +376,36 @@
     <span class="platform-label">Platform:</span>
     <button class="ptoggle active" onclick="setCliPlatform('linux',this)">Unraid / Linux</button>
     <button class="ptoggle" onclick="setCliPlatform('windows',this)">Windows</button>
-    <button class="ptoggle" onclick="setCliPlatform('docker',this)">Docker</button>
+  </div>
+
+  <!-- One-time install -->
+  <div class="section">
+    <div class="section-title">One-time setup <span class="out-sub">— skip if nugs-dl is already in your PATH</span></div>
+    <div id="install-linux">
+      <div style="font-size:13px; color:var(--muted); margin-bottom:8px;">Paste this once in your Unraid terminal to install a wrapper at <code style="font-family:monospace;color:var(--text)">/usr/local/bin/nugs-dl</code>:</div>
+      <div class="out-block" style="margin-top:0">
+        <div class="out-header">
+          <span class="out-title">Install wrapper</span>
+          <button class="btn-copy" onclick="doCopy('install-cmd-linux',this)">Copy</button>
+        </div>
+        <pre class="out" id="install-cmd-linux">cat > /usr/local/bin/nugs-dl << 'EOF'
+#!/bin/sh
+docker run --rm \
+  -v /mnt/user/appdata/autonugget/config.json:/app/config.json:ro \
+  -v /mnt/user/media/Nugs:/app/downloads \
+  ghcr.io/ctrlaltdelightongit/autonugget:latest "$@"
+EOF
+chmod +x /usr/local/bin/nugs-dl</pre>
+      </div>
+      <div class="hint" style="margin-top:6px">This wraps <code style="font-family:monospace">docker run --rm</code> — Docker and the GHCR image must already be installed. Only needed once; persists across reboots.</div>
+    </div>
+    <div id="install-windows" style="display:none">
+      <ol style="font-size:13px; color:var(--muted); padding-left:18px; line-height:2">
+        <li>Download <a href="https://github.com/CtrlAltDelightOnGit/AutoNugget/releases/latest/download/nugs-dl-windows-amd64.exe" style="color:var(--accent)">nugs-dl-windows-amd64.exe</a> and place it somewhere on your PATH (or run it from the same folder).</li>
+        <li>Install ffmpeg: <code style="font-family:monospace;color:var(--text)">winget install ffmpeg</code></li>
+        <li>Set <code style="font-family:monospace;color:var(--text)">"useFfmpegEnvVar": true</code> in your config.json (the Config Generator does this automatically on Windows).</li>
+      </ol>
+    </div>
   </div>
 
   <!-- URLs -->
@@ -436,21 +465,6 @@
     </div>
   </div>
 
-  <!-- Docker paths -->
-  <div class="section" id="docker-paths" style="display:none">
-    <div class="section-title">Docker Volume Paths</div>
-    <div class="grid">
-      <div class="field">
-        <label for="dk-cfg">config.json path on host</label>
-        <input type="text" id="dk-cfg" value="/mnt/user/appdata/autonugget/config.json" oninput="genCli()">
-      </div>
-      <div class="field">
-        <label for="dk-dl">Downloads path on host</label>
-        <input type="text" id="dk-dl" value="/mnt/user/media/Nugs" oninput="genCli()">
-      </div>
-    </div>
-  </div>
-
   <!-- Output -->
   <div class="out-block">
     <div class="out-header">
@@ -504,8 +518,8 @@ function setCliPlatform(p, btn) {
   document.querySelectorAll('#panel-cli .ptoggle')
     .forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('docker-paths').style.display = p === 'docker' ? 'block' : 'none';
-  document.getElementById('cli-out-field').style.display = p === 'docker' ? 'none' : 'flex';
+  document.getElementById('install-linux').style.display  = p === 'linux'   ? 'block' : 'none';
+  document.getElementById('install-windows').style.display = p === 'windows' ? 'block' : 'none';
   genCli();
 }
 
@@ -652,22 +666,12 @@ function genCli() {
 
   if (cliPlatform === 'windows') {
     cmd = '.\\nugs-dl.exe ' + allParts.join(' ');
-  } else if (cliPlatform === 'linux') {
-    if (allParts.length <= 2) {
-      cmd = './nugs-dl ' + allParts.join(' ');
-    } else {
-      cmd = './nugs-dl \\\n  ' + allParts.join(' \\\n  ');
-    }
   } else {
-    // Docker
-    const cfgPath = document.getElementById('dk-cfg').value;
-    const dlPath  = document.getElementById('dk-dl').value;
-    const argParts = [...urls, ...flags];
-    cmd = `docker run --rm \\\n` +
-          `  -v ${cfgPath}:/app/config.json:ro \\\n` +
-          `  -v ${dlPath}:/app/downloads \\\n` +
-          `  ghcr.io/ctrlaltdelightongit/autonugget:latest \\\n` +
-          `  ` + argParts.join(' \\\n  ');
+    if (allParts.length <= 2) {
+      cmd = 'nugs-dl ' + allParts.join(' ');
+    } else {
+      cmd = 'nugs-dl \\\n  ' + allParts.join(' \\\n  ');
+    }
   }
 
   document.getElementById('out-cli').textContent = cmd;

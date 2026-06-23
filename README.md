@@ -175,14 +175,24 @@ docker run -d \
   ghcr.io/ctrlaltdelightongit/autonugget:latest
 ```
 
-The container defaults to poll mode. For one-off CLI downloads:
+The container defaults to poll mode. For one-off CLI downloads, install a wrapper script so you can just type `nugs-dl <url>`:
 
 ```bash
+cat > /usr/local/bin/nugs-dl << 'EOF'
+#!/bin/sh
 docker run --rm \
   -v /mnt/user/appdata/autonugget/config.json:/app/config.json:ro \
   -v /mnt/user/media/Nugs:/app/downloads \
-  ghcr.io/ctrlaltdelightongit/autonugget:latest \
-  https://play.nugs.net/release/23329
+  ghcr.io/ctrlaltdelightongit/autonugget:latest "$@"
+EOF
+chmod +x /usr/local/bin/nugs-dl
+```
+
+Then paste any download command directly:
+
+```bash
+nugs-dl https://play.nugs.net/release/23329
+nugs-dl https://play.nugs.net/release/23329 -f 2 --audio-only
 ```
 
 **Managing the container:**
