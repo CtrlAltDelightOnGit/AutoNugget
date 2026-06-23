@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoNugget — Setup Tools</title>
+  <style>
+    :root {
+      --bg:      #0d1117;
+      --surf:    #161b22;
+      --surf2:   #21262d;
+      --border:  #30363d;
+      --text:    #e6edf3;
+      --muted:   #8b949e;
+      --accent:  #58a6ff;
+      --green:   #3fb950;
+      --red:     #f85149;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 24px 32px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .ascii {
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      font-size: 11px;
+      color: var(--accent);
+      white-space: pre;
+      line-height: 1.35;
+      margin-bottom: 6px;
+    }
+    .tagline { color: var(--muted); font-size: 13px; }
+    .tagline a { color: var(--accent); text-decoration: none; }
+    .tagline a:hover { text-decoration: underline; }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      padding: 0 32px;
+      border-bottom: 1px solid var(--border);
+    }
+    .tab {
+      padding: 12px 20px;
+      cursor: pointer;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color .15s;
+      user-select: none;
+    }
+    .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+    .tab:hover:not(.active) { color: var(--text); }
+
+    /* ── Panels ── */
+    .panel { display: none; padding: 28px 32px; max-width: 960px; }
+    .panel.active { display: block; }
+
+    /* ── Platform toggle ── */
+    .platform-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .platform-label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .ptoggle {
+      padding: 5px 14px;
+      border: 1px solid var(--border);
+      background: var(--surf2);
+      color: var(--muted);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all .15s;
+    }
+    .ptoggle.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(88,166,255,.1);
+    }
+
+    /* ── Sections ── */
+    .section { margin-bottom: 24px; }
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Form ── */
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid.cols1 { grid-template-columns: 1fr; }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    label { font-size: 12px; color: var(--muted); font-weight: 500; }
+    input[type=text],
+    input[type=password],
+    input[type=number],
+    select,
+    textarea {
+      background: var(--surf);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .15s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+    select option { background: var(--surf); }
+    textarea { resize: vertical; min-height: 72px; }
+    .hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .cbrow {
+      display: flex; align-items: center; gap: 8px; padding: 6px 0;
+    }
+    .cbrow input { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+    .cbrow label { font-size: 13px; color: var(--text); cursor: pointer; font-weight: 400; margin: 0; }
+
+    /* ── Watchlist ── */
+    .wl-entry {
+      background: var(--surf);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 8px;
+    }
+    .wl-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px;
+    }
+    .wl-label { font-size: 13px; font-weight: 600; color: var(--accent); }
+    .btn-rm {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 3px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .btn-rm:hover { border-color: var(--red); color: var(--red); }
+    .btn-add {
+      background: var(--surf2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      margin-top: 4px;
+    }
+    .btn-add:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Output ── */
+    .out-block { margin-top: 24px; }
+    .out-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 8px;
+    }
+    .out-title { font-size: 13px; font-weight: 600; }
+    .out-sub { font-size: 12px; color: var(--muted); font-weight: 400; margin-left: 6px; }
+    .btn-copy {
+      background: var(--surf2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 5px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all .15s;
+    }
+    .btn-copy:hover, .btn-copy.ok { border-color: var(--green); color: var(--green); }
+    pre.out {
+      background: var(--surf);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      font-size: 12px;
+      white-space: pre;
+      overflow-x: auto;
+      line-height: 1.55;
+    }
+    .path-row {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+    }
+    .path-row label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .path-row input { flex: 1; max-width: 440px; }
+
+    @media (max-width: 640px) {
+      .grid { grid-template-columns: 1fr; }
+      .panel { padding: 20px 16px; }
+      header { padding: 16px; }
+      .tabs { padding: 0 16px; }
+      .ascii { font-size: 8px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="ascii"> _             _     __ _  _            __    __   ___  _
+/_\     _  _  | |_ / _ \| \| |  _  _  / _' |/ _' |/ -_)| |_
+/ _ \  | || | |  _|\___/| .' | | || | \__, |\__, |\___/|  _|
+/_/ \_\ \__,_||_|       |_|\_|  \__,_| /_/   /_/       |_|</div>
+  <div class="tagline">
+    Auto-download new releases from Nugs.net &mdash;
+    <a href="https://github.com/CtrlAltDelightOnGit/AutoNugget" target="_blank">GitHub</a>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('config')">Config Generator</div>
+  <div class="tab" onclick="switchTab('cli')">CLI Command Generator</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ CONFIG GENERATOR -->
+<div id="panel-config" class="panel active">
+
+  <div class="platform-row">
+    <span class="platform-label">Platform:</span>
+    <button class="ptoggle active" onclick="setCfgPlatform('linux',this)">Unraid / Linux</button>
+    <button class="ptoggle" onclick="setCfgPlatform('windows',this)">Windows</button>
+  </div>
+
+  <!-- Credentials -->
+  <div class="section">
+    <div class="section-title">Nugs.net Credentials</div>
+    <div class="grid">
+      <div class="field">
+        <label for="c-email">Email</label>
+        <input type="text" id="c-email" placeholder="you@example.com" oninput="genConfig()">
+      </div>
+      <div class="field">
+        <label for="c-pass">Password</label>
+        <input type="password" id="c-pass" placeholder="your password" oninput="genConfig()">
+      </div>
+    </div>
+  </div>
+
+  <!-- Download settings -->
+  <div class="section">
+    <div class="section-title">Download Settings</div>
+    <div class="grid">
+      <div class="field">
+        <label for="c-fmt">Audio Format</label>
+        <select id="c-fmt" onchange="genConfig()">
+          <option value="1">1 — ALAC  (16-bit / 44.1 kHz)</option>
+          <option value="2">2 — FLAC  (16-bit / 44.1 kHz)</option>
+          <option value="3">3 — MQA   (24-bit / 48 kHz)</option>
+          <option value="4" selected>4 — 360 Reality Audio / Best available</option>
+          <option value="5">5 — AAC 150 Kbps</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="c-vfmt">Video Format</label>
+        <select id="c-vfmt" onchange="genConfig()">
+          <option value="1">1 — 480p</option>
+          <option value="2">2 — 720p</option>
+          <option value="3">3 — 1080p</option>
+          <option value="4">4 — 1440p</option>
+          <option value="5" selected>5 — 4K / Best available</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="c-out">Download Path</label>
+        <input type="text" id="c-out" value="downloads" oninput="genConfig()">
+        <span class="hint" id="c-out-hint">Path inside the container — mount this as a Docker volume</span>
+      </div>
+      <div class="field" style="justify-content:flex-end">
+        <div class="cbrow">
+          <input type="checkbox" id="c-ffmpeg" onchange="genConfig()" checked>
+          <label for="c-ffmpeg">
+            Use FFmpeg from PATH
+            <span style="color:var(--muted)">(required for Docker)</span>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Poll settings -->
+  <div class="section">
+    <div class="section-title">Poll Settings</div>
+    <div class="grid">
+      <div class="field">
+        <label for="c-interval">Poll Interval (minutes)</label>
+        <input type="number" id="c-interval" value="60" min="1" oninput="genConfig()">
+        <span class="hint">Recommended minimum: 30 minutes</span>
+      </div>
+      <div class="field">
+        <label for="c-state">State File Path</label>
+        <input type="text" id="c-state" value="auto_nugget_state.json" oninput="genConfig()">
+        <span class="hint">Tracks which releases have been seen. Bind-mount this in Docker.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notifications -->
+  <div class="section">
+    <div class="section-title">Notifications (optional)</div>
+    <div class="grid">
+      <div class="field">
+        <label for="c-wh-url">Webhook URL</label>
+        <input type="text" id="c-wh-url" placeholder="Leave blank to disable" oninput="genConfig()">
+      </div>
+      <div class="field">
+        <label for="c-wh-type">Webhook Type</label>
+        <select id="c-wh-type" onchange="genConfig()">
+          <option value="discord" selected>Discord</option>
+          <option value="slack">Slack</option>
+          <option value="generic">Generic  {"message": "..."}</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Watchlist -->
+  <div class="section">
+    <div class="section-title">Watchlist</div>
+    <div id="wl-entries"></div>
+    <button class="btn-add" onclick="addArtist()">+ Add Artist</button>
+    <div class="hint" style="margin-top:8px">
+      Artist ID is the number in the Nugs.net URL:
+      <code style="color:var(--accent)">play.nugs.net/artist/<strong>196</strong></code>
+    </div>
+  </div>
+
+  <!-- Output: config.json -->
+  <div class="out-block">
+    <div class="out-header">
+      <span class="out-title">config.json</span>
+      <button class="btn-copy" onclick="doCopy('out-cfg',this)">Copy</button>
+    </div>
+    <pre class="out" id="out-cfg"></pre>
+  </div>
+
+  <!-- Output: write command -->
+  <div class="out-block">
+    <div class="out-header">
+      <span class="out-title">
+        Write Command
+        <span class="out-sub">paste in terminal — no manual editing required</span>
+      </span>
+      <button class="btn-copy" onclick="doCopy('out-write',this)">Copy</button>
+    </div>
+    <div class="path-row">
+      <label>Save to:</label>
+      <input type="text" id="c-write-path" oninput="genConfig()">
+    </div>
+    <pre class="out" id="out-write"></pre>
+  </div>
+
+</div><!-- /panel-config -->
+
+<!-- ═══════════════════════════════════════════════ CLI COMMAND GENERATOR -->
+<div id="panel-cli" class="panel">
+
+  <div class="platform-row">
+    <span class="platform-label">Platform:</span>
+    <button class="ptoggle active" onclick="setCliPlatform('linux',this)">Unraid / Linux</button>
+    <button class="ptoggle" onclick="setCliPlatform('windows',this)">Windows</button>
+    <button class="ptoggle" onclick="setCliPlatform('docker',this)">Docker</button>
+  </div>
+
+  <!-- URLs -->
+  <div class="section">
+    <div class="section-title">Nugs.net URLs</div>
+    <div class="field">
+      <label for="cli-urls">One or more URLs (one per line)</label>
+      <textarea id="cli-urls" rows="4"
+        placeholder="https://play.nugs.net/release/23329&#10;https://play.nugs.net/live-audio-video/23790"
+        oninput="genCli()"></textarea>
+      <span class="hint">Supports: /release/, /live-audio-video/, /video/, /playlists/, /artist/</span>
+    </div>
+  </div>
+
+  <!-- Format overrides -->
+  <div class="section">
+    <div class="section-title">Format Overrides <span class="out-sub">(optional — leave blank to use config.json defaults)</span></div>
+    <div class="grid">
+      <div class="field">
+        <label for="cli-fmt">Audio Format (-f)</label>
+        <select id="cli-fmt" onchange="genCli()">
+          <option value="" selected>— use config.json default —</option>
+          <option value="1">1 — ALAC  (16-bit / 44.1 kHz)</option>
+          <option value="2">2 — FLAC  (16-bit / 44.1 kHz)</option>
+          <option value="3">3 — MQA   (24-bit / 48 kHz)</option>
+          <option value="4">4 — 360 Reality Audio / Best</option>
+          <option value="5">5 — AAC 150 Kbps</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="cli-vfmt">Video Format (-F)</label>
+        <select id="cli-vfmt" onchange="genCli()">
+          <option value="" selected>— use config.json default —</option>
+          <option value="1">1 — 480p</option>
+          <option value="2">2 — 720p</option>
+          <option value="3">3 — 1080p</option>
+          <option value="4">4 — 1440p</option>
+          <option value="5">5 — 4K / Best</option>
+        </select>
+      </div>
+      <div class="field" id="cli-out-field">
+        <label for="cli-out">Output Path (-o)</label>
+        <input type="text" id="cli-out" placeholder="— use config.json default —" oninput="genCli()">
+      </div>
+    </div>
+  </div>
+
+  <!-- Flags -->
+  <div class="section">
+    <div class="section-title">Options</div>
+    <div class="grid">
+      <div class="cbrow"><input type="checkbox" id="opt-fv"  onchange="genCli()"><label for="opt-fv">--force-video</label></div>
+      <div class="cbrow"><input type="checkbox" id="opt-sv"  onchange="genCli()"><label for="opt-sv">--skip-videos</label></div>
+      <div class="cbrow"><input type="checkbox" id="opt-ao"  onchange="genCli()"><label for="opt-ao">--audio-only</label></div>
+      <div class="cbrow"><input type="checkbox" id="opt-vo"  onchange="genCli()"><label for="opt-vo">--video-only</label></div>
+      <div class="cbrow"><input type="checkbox" id="opt-sc"  onchange="genCli()"><label for="opt-sc">--skip-chapters</label></div>
+    </div>
+  </div>
+
+  <!-- Docker paths -->
+  <div class="section" id="docker-paths" style="display:none">
+    <div class="section-title">Docker Volume Paths</div>
+    <div class="grid">
+      <div class="field">
+        <label for="dk-cfg">config.json path on host</label>
+        <input type="text" id="dk-cfg" value="/mnt/user/appdata/autonugget/config.json" oninput="genCli()">
+      </div>
+      <div class="field">
+        <label for="dk-dl">Downloads path on host</label>
+        <input type="text" id="dk-dl" value="/mnt/user/media/Nugs" oninput="genCli()">
+      </div>
+    </div>
+  </div>
+
+  <!-- Output -->
+  <div class="out-block">
+    <div class="out-header">
+      <span class="out-title">Command</span>
+      <button class="btn-copy" onclick="doCopy('out-cli',this)">Copy</button>
+    </div>
+    <pre class="out" id="out-cli"></pre>
+  </div>
+
+</div><!-- /panel-cli -->
+
+<script>
+/* ─────────────────────────── state ─────────────────────────── */
+let cfgPlatform = 'linux';
+let cliPlatform = 'linux';
+let artistSeq   = 0;
+
+/* ─────────────────────────── tabs ──────────────────────────── */
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach((el, i) =>
+    el.classList.toggle('active', ['config','cli'][i] === t));
+  document.querySelectorAll('.panel').forEach(el => el.classList.remove('active'));
+  document.getElementById('panel-' + t).classList.add('active');
+}
+
+/* ─────────────────────────── platform toggles ───────────────── */
+function setCfgPlatform(p, btn) {
+  cfgPlatform = p;
+  document.querySelectorAll('#panel-config .ptoggle')
+    .forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  const ffmpegCb   = document.getElementById('c-ffmpeg');
+  const outHint    = document.getElementById('c-out-hint');
+  const writePath  = document.getElementById('c-write-path');
+
+  if (p === 'linux') {
+    ffmpegCb.checked = true;
+    outHint.textContent = 'Path inside the container — mount this as a Docker volume';
+    writePath.value = '/mnt/user/appdata/autonugget/config.json';
+  } else {
+    ffmpegCb.checked = false;
+    outHint.textContent = 'Relative or absolute path where files are saved';
+    writePath.value = 'C:\\Users\\YourName\\autonugget\\config.json';
+  }
+  genConfig();
+}
+
+function setCliPlatform(p, btn) {
+  cliPlatform = p;
+  document.querySelectorAll('#panel-cli .ptoggle')
+    .forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('docker-paths').style.display = p === 'docker' ? 'block' : 'none';
+  document.getElementById('cli-out-field').style.display = p === 'docker' ? 'none' : 'flex';
+  genCli();
+}
+
+/* ─────────────────────────── watchlist ──────────────────────── */
+function addArtist() {
+  artistSeq++;
+  const uid = 'wl' + artistSeq;
+  const div = document.createElement('div');
+  div.className = 'wl-entry';
+  div.id = uid;
+  div.innerHTML = `
+    <div class="wl-header">
+      <span class="wl-label">Artist ${artistSeq}</span>
+      <button class="btn-rm" onclick="rmArtist('${uid}')">Remove</button>
+    </div>
+    <div class="grid">
+      <div class="field">
+        <label>Artist ID</label>
+        <input type="text" class="a-id" placeholder="196" oninput="genConfig()">
+        <span class="hint">Number from play.nugs.net/artist/<strong>196</strong></span>
+      </div>
+      <div class="field">
+        <label>Display Name</label>
+        <input type="text" class="a-name" placeholder="Phish" oninput="genConfig()">
+        <span class="hint">Used in webhook notifications</span>
+      </div>
+      <div class="field">
+        <label>Audio Format override</label>
+        <select class="a-fmt" onchange="genConfig()">
+          <option value="-1" selected>-1 — Use global default</option>
+          <option value="1">1 — ALAC</option>
+          <option value="2">2 — FLAC</option>
+          <option value="3">3 — MQA</option>
+          <option value="4">4 — 360 Reality / Best</option>
+          <option value="5">5 — AAC 150 Kbps</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Video Format override</label>
+        <select class="a-vfmt" onchange="genConfig()">
+          <option value="-1" selected>-1 — Use global default</option>
+          <option value="1">1 — 480p</option>
+          <option value="2">2 — 720p</option>
+          <option value="3">3 — 1080p</option>
+          <option value="4">4 — 1440p</option>
+          <option value="5">5 — 4K / Best</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Per-artist download path</label>
+        <input type="text" class="a-out" placeholder='blank = use global "outPath"' oninput="genConfig()">
+      </div>
+      <div class="field" style="justify-content:flex-end">
+        <div class="cbrow">
+          <input type="checkbox" class="a-fill" onchange="genConfig()">
+          <label>backfillAll — download entire back-catalog on first run</label>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('wl-entries').appendChild(div);
+  genConfig();
+}
+
+function rmArtist(uid) {
+  document.getElementById(uid).remove();
+  genConfig();
+}
+
+/* ─────────────────────────── config generator ───────────────── */
+function genConfig() {
+  const cfg = {
+    email:            document.getElementById('c-email').value,
+    password:         document.getElementById('c-pass').value,
+    format:           parseInt(document.getElementById('c-fmt').value),
+    videoFormat:      parseInt(document.getElementById('c-vfmt').value),
+    outPath:          document.getElementById('c-out').value || 'downloads',
+    useFfmpegEnvVar:  document.getElementById('c-ffmpeg').checked,
+    watchlist:        [],
+    pollIntervalMins: parseInt(document.getElementById('c-interval').value) || 60,
+    notifyWebhookUrl: document.getElementById('c-wh-url').value,
+    notifyWebhookType:document.getElementById('c-wh-type').value,
+    stateFilePath:    document.getElementById('c-state').value || 'auto_nugget_state.json',
+  };
+
+  document.querySelectorAll('#wl-entries .wl-entry').forEach(entry => {
+    const id = entry.querySelector('.a-id').value.trim();
+    if (!id) return;
+    const artist = {
+      artistId:    id,
+      name:        entry.querySelector('.a-name').value.trim(),
+      format:      parseInt(entry.querySelector('.a-fmt').value),
+      videoFormat: parseInt(entry.querySelector('.a-vfmt').value),
+      backfillAll: entry.querySelector('.a-fill').checked,
+    };
+    const op = entry.querySelector('.a-out').value.trim();
+    if (op) artist.outPath = op;
+    cfg.watchlist.push(artist);
+  });
+
+  const json = JSON.stringify(cfg, null, 2);
+  document.getElementById('out-cfg').textContent = json;
+  document.getElementById('out-write').textContent = buildWriteCmd(json);
+}
+
+function buildWriteCmd(json) {
+  const path = document.getElementById('c-write-path').value ||
+    (cfgPlatform === 'linux'
+      ? '/mnt/user/appdata/autonugget/config.json'
+      : 'C:\\autonugget\\config.json');
+
+  if (cfgPlatform === 'linux') {
+    return `cat > ${path} << 'EOF'\n${json}\nEOF`;
+  } else {
+    // PowerShell here-string: closing '@ must be at column 0
+    return `@'\n${json}\n'@ | Set-Content -Path "${path}" -Encoding UTF8`;
+  }
+}
+
+/* ─────────────────────────── cli generator ──────────────────── */
+function genCli() {
+  const urls  = document.getElementById('cli-urls').value
+                  .split('\n').map(s => s.trim()).filter(Boolean);
+  const fmt   = document.getElementById('cli-fmt').value;
+  const vfmt  = document.getElementById('cli-vfmt').value;
+  const outp  = document.getElementById('cli-out').value.trim();
+
+  const flags = [];
+  if (fmt)  flags.push(`-f ${fmt}`);
+  if (vfmt) flags.push(`-F ${vfmt}`);
+  if (outp && cliPlatform !== 'docker') flags.push(`-o "${outp}"`);
+  if (document.getElementById('opt-fv').checked)  flags.push('--force-video');
+  if (document.getElementById('opt-sv').checked)  flags.push('--skip-videos');
+  if (document.getElementById('opt-ao').checked)  flags.push('--audio-only');
+  if (document.getElementById('opt-vo').checked)  flags.push('--video-only');
+  if (document.getElementById('opt-sc').checked)  flags.push('--skip-chapters');
+
+  if (!urls.length) {
+    document.getElementById('out-cli').textContent = '# Paste one or more Nugs.net URLs above';
+    return;
+  }
+
+  let cmd;
+  const allParts = [...urls, ...flags];
+
+  if (cliPlatform === 'windows') {
+    cmd = '.\\nugs-dl.exe ' + allParts.join(' ');
+  } else if (cliPlatform === 'linux') {
+    if (allParts.length <= 2) {
+      cmd = './nugs-dl ' + allParts.join(' ');
+    } else {
+      cmd = './nugs-dl \\\n  ' + allParts.join(' \\\n  ');
+    }
+  } else {
+    // Docker
+    const cfgPath = document.getElementById('dk-cfg').value;
+    const dlPath  = document.getElementById('dk-dl').value;
+    const argParts = [...urls, ...flags];
+    cmd = `docker run --rm \\\n` +
+          `  -v ${cfgPath}:/app/config.json:ro \\\n` +
+          `  -v ${dlPath}:/app/downloads \\\n` +
+          `  autonugget \\\n` +
+          `  ` + argParts.join(' \\\n  ');
+  }
+
+  document.getElementById('out-cli').textContent = cmd;
+}
+
+/* ─────────────────────────── copy ──────────────────────────── */
+function doCopy(id, btn) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('ok'); }, 2000);
+  });
+}
+
+/* ─────────────────────────── init ──────────────────────────── */
+document.getElementById('c-write-path').value = '/mnt/user/appdata/autonugget/config.json';
+addArtist();
+genConfig();
+genCli();
+</script>
+</body>
+</html>
