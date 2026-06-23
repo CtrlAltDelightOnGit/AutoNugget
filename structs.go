@@ -21,10 +21,24 @@ type Config struct {
 	Token           string
 	UseFfmpegEnvVar bool
 	FfmpegNameStr   string
-	ForceVideo      bool
-	SkipVideos		bool
-	VideoOnly		bool
-	SkipChapters	bool
+	ForceVideo       bool
+	SkipVideos       bool
+	VideoOnly        bool
+	SkipChapters     bool
+	Watchlist        []WatchedArtist `json:"watchlist"`
+	PollIntervalMins int             `json:"pollIntervalMins"`
+	NotifyWebhookURL string          `json:"notifyWebhookUrl"`
+	NotifyWebhookType string         `json:"notifyWebhookType"` // "discord" | "slack" | "generic"
+	StateFilePath    string          `json:"stateFilePath"`
+}
+
+type WatchedArtist struct {
+	ArtistID    string `json:"artistId"`
+	Format      int    `json:"format"`      // -1 = use global Config.Format
+	VideoFormat int    `json:"videoFormat"` // -1 = use global Config.VideoFormat
+	BackfillAll bool   `json:"backfillAll"` // true = download all existing on first detection
+	OutPath     string `json:"outPath"`     // "" = use global Config.OutPath
+	Name        string `json:"name"`        // human-readable label for notifications
 }
 
 type Args struct {

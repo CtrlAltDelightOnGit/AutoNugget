@@ -1721,6 +1721,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	if len(os.Args) > 1 && os.Args[1] == "poll" {
+		runPollMode()
+		return
+	}
 	cfg, err := parseCfg()
 	if err != nil {
 		handleErr("Failed to parse config/args.", err, true)
