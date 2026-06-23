@@ -450,6 +450,10 @@ chmod +x /usr/local/bin/nugs-dl</pre>
         <label for="cli-out">Output Path (-o)</label>
         <input type="text" id="cli-out" placeholder="— use config.json default —" oninput="genCli()">
       </div>
+      <div class="field" id="cli-out-docker-note" style="display:none">
+        <label>Output Path</label>
+        <div class="hint" style="font-size:12px; color:var(--muted); padding: 7px 0;">Downloads go to the volume mounted in your wrapper script (<code style="font-family:monospace">/mnt/user/media/Nugs</code> by default). To change it, reinstall the wrapper with a different <code style="font-family:monospace">-v</code> path.</div>
+      </div>
     </div>
   </div>
 
@@ -518,8 +522,10 @@ function setCliPlatform(p, btn) {
   document.querySelectorAll('#panel-cli .ptoggle')
     .forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('install-linux').style.display  = p === 'linux'   ? 'block' : 'none';
-  document.getElementById('install-windows').style.display = p === 'windows' ? 'block' : 'none';
+  document.getElementById('install-linux').style.display    = p === 'linux'   ? 'block' : 'none';
+  document.getElementById('install-windows').style.display  = p === 'windows' ? 'block' : 'none';
+  document.getElementById('cli-out-field').style.display    = p === 'windows' ? 'flex'  : 'none';
+  document.getElementById('cli-out-docker-note').style.display = p === 'linux' ? 'flex' : 'none';
   genCli();
 }
 
@@ -690,6 +696,8 @@ function doCopy(id, btn) {
 
 /* ─────────────────────────── init ──────────────────────────── */
 document.getElementById('c-write-path').value = '/mnt/user/appdata/autonugget/config.json';
+document.getElementById('cli-out-field').style.display       = 'none';
+document.getElementById('cli-out-docker-note').style.display = 'flex';
 addArtist();
 genConfig();
 genCli();
