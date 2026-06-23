@@ -10,3 +10,4 @@ RUN apk --no-cache add ca-certificates ffmpeg
 WORKDIR /app
 COPY --from=builder /build/nugs-dl .
 ENTRYPOINT ["/app/nugs-dl"]
+CMD ["poll"]

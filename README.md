@@ -141,23 +141,50 @@ To run unattended, set up a Task Scheduler task that runs `nugs-dl.exe poll` at 
 
 ### Running on Docker / Unraid
 
-Build for Linux:
+**1. Clone and build:**
 
-```
-GOOS=linux GOARCH=amd64 go build -o nugs-dl .
+```bash
+git clone https://github.com/CtrlAltDelightOnGit/AutoNugget
+cd AutoNugget
+docker build -t autonugget .
 ```
 
-Mount your `config.json`, state file, and download directory as volumes. Example `docker run`:
+**2. Create your appdata directory and drop in your config:**
 
+```bash
+mkdir -p /mnt/user/appdata/autonugget
+# copy your config.json to /mnt/user/appdata/autonugget/config.json
+# ensure "outPath": "downloads" in the config so files land in the mounted volume
 ```
+
+**3. Run the container:**
+
+```bash
 docker run -d \
-  -v /path/to/config.json:/app/config.json \
-  -v /path/to/state.json:/app/auto_nugget_state.json \
-  -v /mnt/media/nugs:/app/downloads \
+  --name autonugget \
+  --restart unless-stopped \
+  -v /mnt/user/appdata/autonugget/config.json:/app/config.json:ro \
+  -v /mnt/user/appdata/autonugget/state.json:/app/auto_nugget_state.json \
+  -v /mnt/user/media/Nugs:/app/downloads \
   autonugget
 ```
 
-A Dockerfile is planned for a future release.
+The container defaults to poll mode. To use CLI mode instead, pass a URL as an argument:
+
+```bash
+docker run --rm \
+  -v /mnt/user/appdata/autonugget/config.json:/app/config.json:ro \
+  -v /mnt/user/media/Nugs:/app/downloads \
+  autonugget https://play.nugs.net/release/23329
+```
+
+**Managing the container:**
+
+```bash
+docker logs -f autonugget                                                        # follow live logs
+docker restart autonugget                                                        # restart after a config change
+git pull && docker build -t autonugget . && docker restart autonugget           # update to latest
+```
 
 ### First-Run Behavior
 
