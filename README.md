@@ -1,92 +1,241 @@
-# Nugs-Downloader
-Nugs downloader written in Go.
-![](https://i.imgur.com/NOsQjnP.png)
-![](https://i.imgur.com/BEudufy.png)
-[Windows, Linux, macOS, and Android binaries](https://github.com/Sorrow446/Nugs-Downloader/releases)
+# AutoNugget
 
-# Setup
-Input credentials into config file.
-Configure any other options if needed.
-|Option|Info|
-| --- | --- |
-|email|Email address.
-|password|Password.
-|format|Track download quality. 1 = 16-bit / 44.1 kHz ALAC, 2 = 16-bit / 44.1 kHz FLAC, 3 = 24-bit / 48 kHz MQA, 4 = 360 Reality Audio / best available, 5 = 150 Kbps AAC.
-|videoFormat|Video download format. 1 = 480p, 2 = 720p, 3 = 1080p, 4 = 1440p, 5 = 4K / best available. **FFmpeg needed, see below.**
-|outPath|Where to download to. Path will be made if it doesn't already exist.
-|token|Token to auth with Apple and Google accounts ([how to get token](https://github.com/Sorrow446/Nugs-Downloader/blob/main/token.md)). Ignore if you're using a regular account.
-|useFfmpegEnvVar|true = call FFmpeg from environment variable, false = call from script dir.
+Automatically watches your Nugs.net artist pages, downloads new live recordings in your preferred quality, and sends a webhook notification — no manual checking required.
 
-**FFmpeg is needed for TS -> MP4 losslessly for videos & HLS-only tracks, see below.**  
+Built on top of [Syco54645/Nugs-Downloader](https://github.com/Syco54645/Nugs-Downloader). All original download functionality is preserved; AutoNugget adds a `poll` subcommand for unattended, scheduled monitoring.
 
-# FFmpeg Setup
-[Windows (gpl)](https://github.com/BtbN/FFmpeg-Builds/releases)    
-Linux: `sudo apt install ffmpeg`    
-Termux `pkg install ffmpeg`    
-Place in Nugs DL's script/binary directory if using FFmpeg binary.
+---
 
-If you don't have root in Linux, you can have Nugs DL look for the binary in the same dir by setting the `useFfmpegEnvVar` option to false.
+## How It Works
 
-## Supported Media
-|Type|URL example|
-| --- | --- |
-|Album|`https://play.nugs.net/release/23329`
-|Artist|`https://play.nugs.net/#/artist/461/latest`, `https://play.nugs.net/#/artist/461`
-|Catalog playlist|`https://2nu.gs/3PmqXLW`
-|Exclusive Livestream|`https://play.nugs.net/watch/livestreams/exclusive/30119`
-|Purchased Livestream|`https://www.nugs.net/on/demandware.store/Sites-NugsNet-Site/default/Stash-QueueVideo?skuID=624598&showID=30367&perfDate=10-29-2022&artistName=Billy%20Strings&location=10-29-2022%20Exploreasheville%2ecom%20Arena%20Asheville%2c%20NC&format=liveHdStream` Wrap in double quotes on Windows. 
-|User playlist|`https://play.nugs.net/#/playlists/playlist/1215400`, `https://play.nugs.net/library/playlist/1261211`
-|Video|`https://play.nugs.net/#/videos/artist/1045/Dead%20and%20Company/container/27323` Wrap in double quotes on Windows.
-|Webcast|`https://play.nugs.net/#/my-webcasts/5826189-30369-0-624602`
+1. You configure a watchlist of Nugs.net artist IDs in `config.json`
+2. Run `nugs-dl.exe poll` (Windows) or `nugs-dl poll` (Linux/Docker)
+3. On the first run, the current catalog is snapshotted — nothing is downloaded
+4. On every subsequent poll cycle, any new releases are downloaded automatically and a notification is sent
+5. The poll loop runs indefinitely; use Task Scheduler (Windows) or a Docker container (Unraid) to keep it running
 
-# Usage
-Args take priority over the config file.
+---
 
-Download two albums:   
-`nugs_dl_x64.exe https://play.nugs.net/release/23329 https://play.nugs.net/release/23790`
+## Setup
 
-Download a single album and from two text files:   
-`nugs_dl_x64.exe https://play.nugs.net/release/23329 G:\1.txt G:\2.txt`
+### 1. Create config.json
 
-Download a user playlist and video:
-`nugs_dl_x64.exe https://play.nugs.net/#/playlists/playlist/1215400 "https://play.nugs.net/#/videos/artist/1045/Dead%20and%20Company/container/27323"`
+Place `config.json` in the same directory as the binary. A minimal poll mode config:
+
+```json
+{
+  "email": "your@email.com",
+  "password": "yourpassword",
+  "format": 2,
+  "videoFormat": 3,
+  "outPath": "downloads",
+  "watchlist": [
+    {
+      "artistId": "196",
+      "name": "Phish",
+      "format": -1,
+      "videoFormat": -1,
+      "backfillAll": false,
+      "outPath": ""
+    }
+  ],
+  "pollIntervalMins": 60,
+  "notifyWebhookUrl": "https://discord.com/api/webhooks/YOUR_WEBHOOK",
+  "notifyWebhookType": "discord",
+  "stateFilePath": "auto_nugget_state.json"
+}
+```
+
+### 2. Config Field Reference
+
+**Credentials and global settings:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `email` | string | — | Nugs.net account email. Required unless using `token`. |
+| `password` | string | — | Nugs.net account password. Required unless using `token`. |
+| `token` | string | `""` | Bearer token for Apple/Google accounts. See [token.md](token.md). |
+| `format` | int | `4` | Global audio download quality. See format table below. |
+| `videoFormat` | int | `5` | Global video download quality. See format table below. |
+| `outPath` | string | `"Nugs downloads"` | Download directory. Created automatically if it doesn't exist. |
+| `useFfmpegEnvVar` | bool | `false` | `true` = use `ffmpeg` from PATH. `false` = use `./ffmpeg` from binary directory. |
+
+**Poll mode settings:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `watchlist` | array | `[]` | Artists to monitor. See watchlist field reference below. |
+| `pollIntervalMins` | int | `60` | Minutes between poll cycles. Recommended minimum: 60. |
+| `notifyWebhookUrl` | string | `""` | Webhook URL for new-release notifications. Leave blank to disable. |
+| `notifyWebhookType` | string | `"discord"` | Webhook format: `"discord"`, `"slack"`, or `"generic"`. |
+| `stateFilePath` | string | `"auto_nugget_state.json"` | Path to the state file that tracks already-seen releases. |
+
+**Watchlist entry fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `artistId` | string | — | Required. Numeric Nugs.net artist ID. See [Finding Artist IDs](#finding-artist-ids). |
+| `name` | string | `""` | Human-readable label used in logs and notifications. |
+| `format` | int | `-1` | Per-artist audio format override. `-1` = inherit global `format`. |
+| `videoFormat` | int | `-1` | Per-artist video format override. `-1` = inherit global `videoFormat`. |
+| `backfillAll` | bool | `false` | `false` = snapshot existing catalog on first run, download only future releases. `true` = download the artist's entire catalog on first run. |
+| `outPath` | string | `""` | Per-artist download directory. `""` = inherit global `outPath`. |
+
+### 3. Format Values
+
+**Audio (`format`):**
+
+| Value | Quality |
+|---|---|
+| `1` | 16-bit / 44.1 kHz ALAC |
+| `2` | 16-bit / 44.1 kHz FLAC |
+| `3` | 24-bit / 48 kHz MQA |
+| `4` | 360 Reality Audio / best available |
+| `5` | 150 Kbps AAC |
+
+**Video (`videoFormat`):**
+
+| Value | Quality |
+|---|---|
+| `1` | 480p |
+| `2` | 720p |
+| `3` | 1080p |
+| `4` | 1440p |
+| `5` | 4K / best available |
+
+---
+
+## Poll Mode
+
+### Finding Artist IDs
+
+The artist ID is the number in the Nugs.net artist page URL.
+
+Navigate to an artist's page on [play.nugs.net](https://play.nugs.net) — the URL will look like:
 
 ```
- _____                ____                _           _
-|   | |_ _ ___ ___   |    \ ___ _ _ _ ___| |___ ___ _| |___ ___
-| | | | | | . |_ -|  |  |  | . | | | |   | | . | .'| . | -_|  _|
-|_|___|___|_  |___|  |____/|___|_____|_|_|_|___|__,|___|___|_|
-          |___|
+https://play.nugs.net/artist/196
+```
 
-Usage: nugs_dl_x64.exe [--format FORMAT] [--videoformat VIDEOFORMAT] [--outpath OUTPATH] URLS [URLS ...]
+The number at the end (`196`) is the `artistId` to use in your watchlist.
 
-Positional arguments:
-  URLS
+### Webhook Notifications
 
-Options:
-  --format FORMAT, -f FORMAT
-                         Track download format.
-                         1 = 16-bit / 44.1 kHz ALAC
-                         2 = 16-bit / 44.1 kHz FLAC
-                         3 = 24-bit / 48 kHz MQA
-                         4 = 360 Reality Audio / best available
-                         5 = 150 Kbps AAC [default: -1]
-  --videoformat VIDEOFORMAT, -F VIDEOFORMAT
-                         Video download format.
-                         1 = 480p
-                         2 = 720p
-                         3 = 1080p
-                         4 = 1440p
-                         5 = 4K / best available [default: -1]
-  --outpath OUTPATH, -o OUTPATH
-                         Where to download to. Path will be made if it doesn't already exist.
-  --force-video          Forces video when it co-exists with audio in release URLs.
-  --skip-videos          Skips videos in artist URLs.
-  --skip-chapters        Skips chapters for videos.
-  --help, -h             display this help and exit
-  ```
- 
-# Disclaimer
-- I will not be responsible for how you use Nugs Downloader.    
-- Nugs brand and name is the registered trademark of its respective owner.    
-- Nugs Downloader has no partnership, sponsorship or endorsement with Nugs.
+When a new release is detected and downloaded, AutoNugget POSTs a message to your configured webhook.
+
+**Discord:** Create a webhook in your server's channel settings → Integrations → Webhooks. Set `notifyWebhookType` to `"discord"`.
+
+**Slack:** Create an incoming webhook in your Slack workspace. Set `notifyWebhookType` to `"slack"`.
+
+**Generic:** Any endpoint that accepts a POST with `Content-Type: application/json` and a `{"message": "..."}` body. Set `notifyWebhookType` to `"generic"`.
+
+Leave `notifyWebhookUrl` blank to disable notifications entirely — downloads will still proceed.
+
+### Running on Windows
+
+```
+.\nugs-dl.exe poll
+```
+
+To run unattended, set up a Task Scheduler task that runs `nugs-dl.exe poll` at startup or on a schedule. The process runs indefinitely and polls on its own interval — you don't need to schedule the poll cycles, just the initial launch.
+
+### Running on Docker / Unraid
+
+Build for Linux:
+
+```
+GOOS=linux GOARCH=amd64 go build -o nugs-dl .
+```
+
+Mount your `config.json`, state file, and download directory as volumes. Example `docker run`:
+
+```
+docker run -d \
+  -v /path/to/config.json:/app/config.json \
+  -v /path/to/state.json:/app/auto_nugget_state.json \
+  -v /mnt/media/nugs:/app/downloads \
+  autonugget
+```
+
+A Dockerfile is planned for a future release.
+
+### First-Run Behavior
+
+On the **first** poll cycle for a new watchlist entry:
+
+- **`backfillAll: false` (default):** All existing releases are recorded as already seen. Nothing is downloaded. Only releases that appear *after* this run will be downloaded.
+- **`backfillAll: true`:** The artist's entire available catalog is downloaded immediately.
+
+The state file (`stateFilePath`) records which releases have been seen. It is written after each successful individual download — if the process is interrupted mid-cycle, the next run retries any releases not yet recorded.
+
+---
+
+## CLI Mode
+
+All original download functionality works unchanged. Pass one or more Nugs.net URLs directly:
+
+```
+nugs-dl.exe https://play.nugs.net/release/23329
+nugs-dl.exe https://play.nugs.net/release/23329 https://play.nugs.net/release/23790
+```
+
+Pass a text file of URLs:
+
+```
+nugs-dl.exe G:\urls.txt
+```
+
+CLI flags override config.json values:
+
+```
+nugs-dl.exe -f 2 -F 3 -o "D:\Music" https://play.nugs.net/release/23329
+```
+
+**CLI flags:**
+
+| Flag | Description |
+|---|---|
+| `-f FORMAT` | Audio format (1–5) |
+| `-F FORMAT` | Video format (1–5) |
+| `-o PATH` | Output directory |
+| `--force-video` | Force video download when audio and video co-exist |
+| `--skip-videos` | Skip video content in artist URLs |
+| `--audio-only` | Download audio only in artist URLs |
+| `--video-only` | Download video only in artist URLs |
+| `--skip-chapters` | Skip chapter markers for videos |
+
+**Supported URL types:**
+
+| Type | Example |
+|---|---|
+| Album | `https://play.nugs.net/release/23329` |
+| Artist page | `https://play.nugs.net/artist/461` |
+| Catalog playlist | `https://2nu.gs/3PmqXLW` |
+| Exclusive Livestream | `https://play.nugs.net/watch/livestreams/exclusive/30119` |
+| User playlist | `https://play.nugs.net/library/playlist/1261211` |
+| Video | `https://play.nugs.net/#/videos/artist/1045/Dead%20and%20Company/container/27323` (wrap in quotes on Windows) |
+| Webcast | `https://play.nugs.net/#/my-webcasts/5826189-30369-0-624602` |
+
+---
+
+## FFmpeg Setup
+
+FFmpeg is required for TS → MP4 conversion (videos) and HLS-only tracks.
+
+**Windows:** Download a GPL build from [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds/releases). Place `ffmpeg.exe` in the same directory as `nugs-dl.exe`, or set `useFfmpegEnvVar: true` in config.json to use an FFmpeg already on your PATH.
+
+**Linux:** `sudo apt install ffmpeg`
+
+---
+
+## Apple / Google Account Auth
+
+If your Nugs.net account is linked to Apple or Google, use a `token` instead of `email`/`password`. See [token.md](token.md) for instructions on extracting your token.
+
+---
+
+## Disclaimer
+
+- I will not be responsible for how you use AutoNugget.
+- Nugs and Nugs.net are registered trademarks of their respective owners.
+- AutoNugget has no partnership, sponsorship, or endorsement from Nugs.
