@@ -1,2 +1,5 @@
 *history*.txt
 main
+config.json
+*.exe
+*_state.json
