@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net/http"
 	"net/http/cookiejar"
@@ -18,7 +19,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"runtime"
 	"sort"
@@ -125,14 +125,6 @@ func (wc *WriteCounter) Write(p []byte) (int, error) {
 	fmt.Printf("\r%d%% @ %s/s, %s/%s ", wc.Percentage, humanize.Bytes(uint64(speed)),
 		humanize.Bytes(uint64(wc.Downloaded)), wc.TotalStr)
 	return n, nil
-}
-
-func handleErr(errText string, err error, _panic bool) {
-	errString := errText + "\n" + err.Error()
-	if _panic {
-		panic(errString)
-	}
-	fmt.Println(errString)
 }
 
 func wasRunFromSrc() bool {
@@ -386,7 +378,7 @@ func getSubInfo(token string) (*SubInfo, error) {
 }
 
 func getPlan(subInfo *SubInfo) (string, bool) {
-	if !reflect.ValueOf(subInfo.Plan).IsZero() {
+	if subInfo.Plan.ID != "" {
 		return subInfo.Plan.Description, false
 	} else {
 		return subInfo.Promo.Plan.Description, true
@@ -988,7 +980,7 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 		err := processTrack(
 			albumPath, trackNum, trackTotal, cfg, &track, streamParams)
 		if err != nil {
-			handleErr("Track failed.", err, false)
+			log.Printf("Track failed.: %v", err)
 		}
 	}
 
@@ -1032,7 +1024,7 @@ func artist(artistId string, cfg *Config, streamParams *StreamParams) error {
 				err = album(strconv.Itoa(container.ContainerID), cfg, streamParams, nil)
 			}
 			if err != nil {
-				handleErr("Item failed.", err, false)
+				log.Printf("Item failed.: %v", err)
 			}
 		}
 	}
@@ -1065,7 +1057,7 @@ func playlist(plistId, legacyToken string, cfg *Config, streamParams *StreamPara
 		err := processTrack(
 			plistPath, trackNum, trackTotal, cfg, &track.Track, streamParams)
 		if err != nil {
-			handleErr("Track failed.", err, false)
+			log.Printf("Track failed.: %v", err)
 		}
 	}
 	return nil
@@ -1473,7 +1465,7 @@ func video(videoID, uguID string, cfg *Config, streamParams *StreamParams, _meta
 	}
 
 	if !cfg.SkipChapters {
-		chapsAvail = !reflect.ValueOf(meta.VideoChapters).IsZero()
+		chapsAvail = len(meta.VideoChapters) > 0
 	}
 	
 	videoFname := meta.ArtistName + " - " + strings.TrimRight(meta.ContainerInfo, " ")
@@ -1681,8 +1673,31 @@ func init() {
 `)
 }
 
+// initSession resolves the auth token, fetches user and subscription info, and returns
+// a StreamParams ready for download calls. Callers handle any path-specific setup first.
+func initSession(cfg *Config) (token string, subInfo *SubInfo, streamParams *StreamParams, err error) {
+	if cfg.Token != "" {
+		token = strings.TrimPrefix(cfg.Token, "Bearer ")
+	} else {
+		token, err = auth(cfg.Email, cfg.Password)
+		if err != nil {
+			return "", nil, nil, err
+		}
+	}
+	userId, err := getUserInfo(token)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	subInfo, err = getSubInfo(token)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	_, isPromo := getPlan(subInfo)
+	streamParams = parseStreamParams(userId, subInfo, isPromo)
+	return token, subInfo, streamParams, nil
+}
+
 func main() {
-	var token string
 	scriptDir, err := getScriptDir()
 	if err != nil {
 		panic(err)
@@ -1697,40 +1712,27 @@ func main() {
 	}
 	cfg, err := parseCfg()
 	if err != nil {
-		handleErr("Failed to parse config/args.", err, true)
+		log.Fatalf("Failed to parse config/args.: %v", err)
 	}
 	err = makeDirs(cfg.OutPath)
 	if err != nil {
-		handleErr("Failed to make output folder.", err, true)
+		log.Fatalf("Failed to make output folder.: %v", err)
 	}
-	if cfg.Token == "" {
-		token, err = auth(cfg.Email, cfg.Password)
-		if err != nil {
-			handleErr("Failed to auth.", err, true)
-		}
-	} else {
-		token = cfg.Token
-	}
-	userId, err := getUserInfo(token)
+	token, subInfo, streamParams, err := initSession(cfg)
 	if err != nil {
-		handleErr("Failed to get user info.", err, true)
-	}
-	subInfo, err := getSubInfo(token)
-	if err != nil {
-		handleErr("Failed to get subcription info.", err, true)
+		log.Fatalf("Failed to initialize session: %v", err)
 	}
 	legacyToken, uguID, err := extractLegToken(token)
 	if err != nil {
-		handleErr("Failed to extract legacy token.", err, true)
+		log.Fatalf("Failed to extract legacy token.: %v", err)
 	}
-	planDesc, isPromo := getPlan(subInfo)
+	planDesc, _ := getPlan(subInfo)
 	if !subInfo.IsContentAccessible {
 		planDesc = "no active subscription"
 	}
 	fmt.Println(
 		"Signed in successfully - " + planDesc + "\n",
 	)
-	streamParams := parseStreamParams(userId, subInfo, isPromo)
 	albumTotal := len(cfg.Urls)
 	var itemErr error
 
@@ -1761,7 +1763,7 @@ func main() {
 			itemErr = paidLstream(itemId, uguID, cfg, streamParams)
 		}
 		if itemErr != nil {
-			handleErr("Item failed.", itemErr, false)
+			log.Printf("Item failed.: %v", itemErr)
 			continue
 		}
 	}

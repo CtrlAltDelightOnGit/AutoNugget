@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -29,7 +28,7 @@ func validatePollConfig(cfg *Config) error {
 func runPollMode() {
 	cfg, err := readConfig()
 	if err != nil {
-		handleErr("Failed to read config.", err, true)
+		log.Fatalf("Failed to read config.: %v", err)
 	}
 	if err := validatePollConfig(cfg); err != nil {
 		log.Fatalf("[poll] config error: %v", err)
@@ -50,25 +49,10 @@ func runPollMode() {
 	}
 	cfg.WantRes = resolveRes[cfg.VideoFormat]
 
-	var token string
-	if cfg.Token != "" {
-		token = strings.TrimPrefix(cfg.Token, "Bearer ")
-	} else {
-		token, err = auth(cfg.Email, cfg.Password)
-		if err != nil {
-			handleErr("Failed to auth.", err, true)
-		}
-	}
-	userId, err := getUserInfo(token)
+	_, _, streamParams, err := initSession(cfg)
 	if err != nil {
-		handleErr("Failed to get user info.", err, true)
+		log.Fatalf("[poll] Failed to initialize session: %v", err)
 	}
-	subInfo, err := getSubInfo(token)
-	if err != nil {
-		handleErr("Failed to get subscription info.", err, true)
-	}
-	_, isPromo := getPlan(subInfo)
-	streamParams := parseStreamParams(userId, subInfo, isPromo)
 
 	fmt.Println("Poll mode — authenticated. Starting watcher.")
 	runPoller(cfg, streamParams)
@@ -114,7 +98,7 @@ func pollOnce(cfg *Config, streamParams *StreamParams, stateFile string) {
 					}
 				}
 				if err := saveState(stateFile, state); err != nil {
-					log.Printf("[poll] ERROR saving state: %v", err)
+					log.Printf("[poll] WARN: failed to persist state for %s — will re-snapshot on next run: %v", wa.Name, err)
 				}
 				log.Printf("[poll] first run for %s: snapshotted %d containers (backfillAll=false)",
 					wa.Name, len(state[wa.ArtistID]))
