@@ -120,9 +120,10 @@ func pollOnce(cfg *Config, streamParams *StreamParams, stateFile string) {
 			artistCfg.OutPath = wa.OutPath
 		}
 
+		knownSet := buildKnownSet(state[wa.ArtistID])
 		for _, meta := range containers {
 			for _, container := range meta.Response.Containers {
-				if isKnown(state, wa.ArtistID, container.ContainerID) {
+				if knownSet[container.ContainerID] {
 					continue
 				}
 				albumIDStr := strconv.Itoa(container.ContainerID)
@@ -136,6 +137,7 @@ func pollOnce(cfg *Config, streamParams *StreamParams, stateFile string) {
 
 				// State written per successful download (crash safety — ARCHITECTURE invariant)
 				markKnown(state, wa.ArtistID, container.ContainerID)
+				knownSet[container.ContainerID] = true
 				if err := saveState(stateFile, state); err != nil {
 					log.Printf("[poll] ERROR saving state: %v", err)
 				}

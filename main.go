@@ -23,6 +23,7 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
+	"sync"
 	"strings"
 	"time"
 
@@ -331,47 +332,37 @@ func auth(email, pwd string) (string, error) {
 	return obj.AccessToken, nil
 }
 
-func getUserInfo(token string) (string, error) {
-	req, err := http.NewRequest(http.MethodGet, userInfoUrl, nil)
+func apiGet(rawURL, token, ua string, target interface{}) error {
+	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
 	if err != nil {
-		return "", err
+		return err
 	}
-	req.Header.Add("Authorization", "Bearer "+token)
-	req.Header.Add("User-Agent", userAgent)
+	req.Header.Add("User-Agent", ua)
+	if token != "" {
+		req.Header.Add("Authorization", "Bearer "+token)
+	}
 	do, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer do.Body.Close()
 	if do.StatusCode != http.StatusOK {
-		return "", errors.New(do.Status)
+		return errors.New(do.Status)
 	}
+	return json.NewDecoder(do.Body).Decode(target)
+}
+
+func getUserInfo(token string) (string, error) {
 	var obj UserInfo
-	err = json.NewDecoder(do.Body).Decode(&obj)
-	if err != nil {
+	if err := apiGet(userInfoUrl, token, userAgent, &obj); err != nil {
 		return "", err
 	}
 	return obj.Sub, nil
 }
 
 func getSubInfo(token string) (*SubInfo, error) {
-	req, err := http.NewRequest(http.MethodGet, subInfoUrl, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Authorization", "Bearer "+token)
-	req.Header.Add("User-Agent", userAgent)
-	do, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer do.Body.Close()
-	if do.StatusCode != http.StatusOK {
-		return nil, errors.New(do.Status)
-	}
 	var obj SubInfo
-	err = json.NewDecoder(do.Body).Decode(&obj)
-	if err != nil {
+	if err := apiGet(subInfoUrl, token, userAgent, &obj); err != nil {
 		return nil, err
 	}
 	return &obj, nil
@@ -436,42 +427,23 @@ func extractLegToken(tokenStr string) (string, string, error) {
 }
 
 func getAlbumMeta(albumId string) (*AlbumMeta, error) {
-	req, err := http.NewRequest(http.MethodGet, streamApiBase+"api.aspx", nil)
-	if err != nil {
-		return nil, err
-	}
 	query := url.Values{}
 	query.Set("method", "catalog.container")
 	query.Set("containerID", albumId)
 	query.Set("vdisp", "1")
-	req.URL.RawQuery = query.Encode()
-	req.Header.Add("User-Agent", userAgent)
-	do, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer do.Body.Close()
-	if do.StatusCode != http.StatusOK {
-		return nil, errors.New(do.Status)
-	}
 	var obj AlbumMeta
-	err = json.NewDecoder(do.Body).Decode(&obj)
-	if err != nil {
+	if err := apiGet(streamApiBase+"api.aspx?"+query.Encode(), "", userAgent, &obj); err != nil {
 		return nil, err
 	}
 	return &obj, nil
 }
 
 func getPlistMeta(plistId, email, legacyToken string, cat bool) (*PlistMeta, error) {
-	var path string
+	var apiPath string
 	if cat {
-		path = "api.aspx"
+		apiPath = "api.aspx"
 	} else {
-		path = "secureApi.aspx"
-	}
-	req, err := http.NewRequest(http.MethodGet, streamApiBase+path, nil)
-	if err != nil {
-		return nil, err
+		apiPath = "secureApi.aspx"
 	}
 	query := url.Values{}
 	if cat {
@@ -484,19 +456,8 @@ func getPlistMeta(plistId, email, legacyToken string, cat bool) (*PlistMeta, err
 		query.Set("user", email)
 		query.Set("token", legacyToken)
 	}
-	req.URL.RawQuery = query.Encode()
-	req.Header.Add("User-Agent", userAgentTwo)
-	do, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer do.Body.Close()
-	if do.StatusCode != http.StatusOK {
-		return nil, errors.New(do.Status)
-	}
 	var obj PlistMeta
-	err = json.NewDecoder(do.Body).Decode(&obj)
-	if err != nil {
+	if err := apiGet(streamApiBase+apiPath+"?"+query.Encode(), "", userAgentTwo, &obj); err != nil {
 		return nil, err
 	}
 	return &obj, nil
@@ -512,25 +473,9 @@ func getArtistMeta(artistId string) ([]*ArtistMeta, error) {
 	query.Set("availType", "1")
 	query.Set("vdisp", "1")
 	for {
-		req, err := http.NewRequest(http.MethodGet, streamApiBase+"api.aspx", nil)
-		if err != nil {
-			return nil, err
-		}
 		query.Set("startOffset", strconv.Itoa(offset))
-		req.URL.RawQuery = query.Encode()
-		req.Header.Add("User-Agent", userAgent)
-		do, err := client.Do(req)
-		if err != nil {
-			return nil, err
-		}
-		if do.StatusCode != http.StatusOK {
-			do.Body.Close()
-			return nil, errors.New(do.Status)
-		}
 		var obj ArtistMeta
-		err = json.NewDecoder(do.Body).Decode(&obj)
-		do.Body.Close()
-		if err != nil {
+		if err := apiGet(streamApiBase+"api.aspx?"+query.Encode(), "", userAgent, &obj); err != nil {
 			return nil, err
 		}
 		retLen := len(obj.Response.Containers)
@@ -544,39 +489,20 @@ func getArtistMeta(artistId string) ([]*ArtistMeta, error) {
 }
 
 func getPurchasedManUrl(skuID int, showID, userID, uguID string) (string, error) {
-	req, err := http.NewRequest(http.MethodGet, streamApiBase+"bigriver/vidPlayer.aspx", nil)
-	if err != nil {
-		return "", err
-	}
 	query := url.Values{}
 	query.Set("skuId", strconv.Itoa(skuID))
 	query.Set("showId", showID)
 	query.Set("uguid", uguID)
 	query.Set("nn_userID", userID)
 	query.Set("app", "1")
-	req.URL.RawQuery = query.Encode()
-	req.Header.Add("User-Agent", userAgentTwo)
-	do, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer do.Body.Close()
-	if do.StatusCode != http.StatusOK {
-		return "", errors.New(do.Status)
-	}
 	var obj PurchasedManResp
-	err = json.NewDecoder(do.Body).Decode(&obj)
-	if err != nil {
+	if err := apiGet(streamApiBase+"bigriver/vidPlayer.aspx?"+query.Encode(), "", userAgentTwo, &obj); err != nil {
 		return "", err
 	}
 	return obj.FileURL, nil
 }
 
 func getStreamMeta(trackId, skuId, format int, streamParams *StreamParams) (string, error) {
-	req, err := http.NewRequest(http.MethodGet, streamApiBase+"bigriver/subPlayer.aspx", nil)
-	if err != nil {
-		return "", err
-	}
 	query := url.Values{}
 	if format == 0 {
 		query.Set("skuId", strconv.Itoa(skuId))
@@ -592,19 +518,8 @@ func getStreamMeta(trackId, skuId, format int, streamParams *StreamParams) (stri
 	query.Set("nn_userID", streamParams.UserID)
 	query.Set("startDateStamp", streamParams.StartStamp)
 	query.Set("endDateStamp", streamParams.EndStamp)
-	req.URL.RawQuery = query.Encode()
-	req.Header.Add("User-Agent", userAgentTwo)
-	do, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer do.Body.Close()
-	if do.StatusCode != http.StatusOK {
-		return "", errors.New(do.Status)
-	}
 	var obj StreamMeta
-	err = json.NewDecoder(do.Body).Decode(&obj)
-	if err != nil {
+	if err := apiGet(streamApiBase+"bigriver/subPlayer.aspx?"+query.Encode(), "", userAgentTwo, &obj); err != nil {
 		return "", err
 	}
 	return obj.StreamLink, nil
@@ -819,26 +734,37 @@ func processTrack(folPath string, trackNum, trackTotal int, cfg *Config, track *
 		chosenQual *Quality
 	)
 	// Call the stream meta endpoint four times to get all avail formats since the formats can shift.
-	// This will ensure the right format's always chosen.
-	for _, i := range [4]int{1, 4, 7, 10} {
-		streamUrl, err := getStreamMeta(track.TrackID, 0, i, streamParams)
-		if err != nil {
+	// This will ensure the right format's always chosen. Probes run concurrently; order is preserved.
+	type probeResult struct {
+		url string
+		err error
+	}
+	probes := [4]int{1, 4, 7, 10}
+	probeResults := make([]probeResult, len(probes))
+	var wg sync.WaitGroup
+	for i, fmtID := range probes {
+		wg.Add(1)
+		go func(idx, f int) {
+			defer wg.Done()
+			u, err := getStreamMeta(track.TrackID, 0, f, streamParams)
+			probeResults[idx] = probeResult{u, err}
+		}(i, fmtID)
+	}
+	wg.Wait()
+	for _, r := range probeResults {
+		if r.err != nil {
 			fmt.Println("failed to get track stream metadata")
-			return err
-		} else if streamUrl == "" {
+			return r.err
+		}
+		if r.url == "" {
 			return errors.New("the api didn't return a track stream URL")
 		}
-		quality := queryQuality(streamUrl)
+		quality := queryQuality(r.url)
 		if quality == nil {
-			fmt.Println("The API returned an unsupported format, URL:", streamUrl)
+			fmt.Println("The API returned an unsupported format, URL:", r.url)
 			continue
-			//return errors.New("The API returned an unsupported format.")
 		}
 		quals = append(quals, quality)
-		// if quality.Format == 6 {
-		// 	isHlsOnly = true
-		// 	break
-		// }
 	}
 
 	if len(quals) == 0 {

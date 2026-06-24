@@ -32,13 +32,12 @@ func saveState(path string, s PollState) error {
 	return os.Rename(tmp, path)
 }
 
-func isKnown(s PollState, artistID string, containerID int) bool {
-	for _, id := range s[artistID] {
-		if id == containerID {
-			return true
-		}
+func buildKnownSet(ids []int) map[int]bool {
+	set := make(map[int]bool, len(ids))
+	for _, id := range ids {
+		set[id] = true
 	}
-	return false
+	return set
 }
 
 func markKnown(s PollState, artistID string, containerID int) {
