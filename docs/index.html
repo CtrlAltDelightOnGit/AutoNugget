@@ -228,6 +228,7 @@
 <div class="tabs">
   <div class="tab active" onclick="switchTab('config')">Config Generator</div>
   <div class="tab" onclick="switchTab('cli')">CLI Command Generator</div>
+  <div class="tab" onclick="switchTab('install')">Install</div>
 </div>
 
 <!-- ═══════════════════════════════════════════════ CONFIG GENERATOR -->
@@ -280,8 +281,8 @@
       </div>
       <div class="field">
         <label for="c-out">Download Path</label>
-        <input type="text" id="c-out" value="downloads" oninput="genConfig()">
-        <span class="hint" id="c-out-hint">Path inside the container — mount this as a Docker volume</span>
+        <input type="text" id="c-out" value="/mnt/user/media/Nugs" oninput="genConfig()">
+        <span class="hint" id="c-out-hint">Folder where downloads will be saved (e.g. <code style="font-family:monospace">/mnt/user/media/Nugs</code>)</span>
       </div>
       <div class="field" style="justify-content:flex-end">
         <div class="cbrow">
@@ -302,12 +303,12 @@
       <div class="field">
         <label for="c-interval">Poll Interval (minutes)</label>
         <input type="number" id="c-interval" value="60" min="1" oninput="genConfig()">
-        <span class="hint">Recommended minimum: 30 minutes</span>
+        <span class="hint">How often to check for new releases. Recommended minimum: 60</span>
       </div>
       <div class="field">
         <label for="c-state">State File Path</label>
-        <input type="text" id="c-state" value="auto_nugget_state.json" oninput="genConfig()">
-        <span class="hint">Tracks which releases have been seen. Bind-mount this in Docker.</span>
+        <input type="text" id="c-state" value="/mnt/user/appdata/autonugget/state.json" oninput="genConfig()">
+        <span class="hint">Where to persist seen-releases state (e.g. <code style="font-family:monospace">/mnt/user/appdata/autonugget/state.json</code>). Must survive container restarts.</span>
       </div>
     </div>
   </div>
@@ -319,6 +320,7 @@
       <div class="field">
         <label for="c-wh-url">Webhook URL</label>
         <input type="text" id="c-wh-url" placeholder="Leave blank to disable" oninput="genConfig()">
+        <span class="hint">Paste your Discord/Slack webhook URL here. Leave blank to disable notifications.</span>
       </div>
       <div class="field">
         <label for="c-wh-type">Webhook Type</label>
@@ -327,6 +329,7 @@
           <option value="slack">Slack</option>
           <option value="generic">Generic  {"message": "..."}</option>
         </select>
+        <span class="hint">discord, slack, or generic JSON. Only used if a webhook URL is set.</span>
       </div>
     </div>
   </div>
@@ -349,6 +352,12 @@
       <button class="btn-copy" onclick="doCopy('out-cfg',this)">Copy</button>
     </div>
     <pre class="out" id="out-cfg"></pre>
+  </div>
+
+  <!-- Generate Install Command button -->
+  <div style="margin-top:16px; margin-bottom:4px;">
+    <button class="btn-add" style="border-color:var(--accent);color:var(--accent);" onclick="goToInstall()">→ Generate Install Command</button>
+    <span class="hint" style="margin-left:10px; display:inline">Generates a <code style="font-family:monospace">docker run</code> command from your config above.</span>
   </div>
 
   <!-- Output: write command -->
@@ -388,14 +397,7 @@
           <span class="out-title">Install wrapper</span>
           <button class="btn-copy" onclick="doCopy('install-cmd-linux',this)">Copy</button>
         </div>
-        <pre class="out" id="install-cmd-linux">cat > /usr/local/bin/nugs-dl << 'EOF'
-#!/bin/sh
-docker run --rm \
-  -v /mnt/user/appdata/autonugget/config.json:/app/config.json:ro \
-  -v /mnt/user/media/Nugs:/app/downloads \
-  ghcr.io/ctrlaltdelightongit/autonugget:latest "$@"
-EOF
-chmod +x /usr/local/bin/nugs-dl</pre>
+        <pre class="out" id="install-cmd-linux"></pre>
       </div>
       <div class="hint" style="margin-top:6px">This wraps <code style="font-family:monospace">docker run --rm</code> — Docker and the GHCR image must already be installed. Only needed once; persists across reboots.</div>
     </div>
@@ -452,7 +454,7 @@ chmod +x /usr/local/bin/nugs-dl</pre>
       </div>
       <div class="field" id="cli-out-docker-note" style="display:none">
         <label>Output Path</label>
-        <div class="hint" style="font-size:12px; color:var(--muted); padding: 7px 0;">Downloads go to the volume mounted in your wrapper script (<code style="font-family:monospace">/mnt/user/media/Nugs</code> by default). To change it, reinstall the wrapper with a different <code style="font-family:monospace">-v</code> path.</div>
+        <div class="hint" style="font-size:12px; color:var(--muted); padding: 7px 0;">Downloads go to the <strong>Download Path</strong> you set in the Config Generator. Change it there — the broad <code style="font-family:monospace">-v /mnt/user:/mnt/user</code> mount makes any <code style="font-family:monospace">/mnt/user/…</code> path accessible inside the container.</div>
       </div>
     </div>
   </div>
@@ -480,6 +482,40 @@ chmod +x /usr/local/bin/nugs-dl</pre>
 
 </div><!-- /panel-cli -->
 
+<!-- ═══════════════════════════════════════════════ INSTALL -->
+<div id="panel-install" class="panel">
+
+  <p style="font-size:13px; color:var(--muted); margin-bottom:20px;">
+    Run this on your Unraid terminal (or any Linux host with Docker). Values are pulled from the Config Generator — fill that in first.
+  </p>
+
+  <div class="out-block">
+    <div class="out-header">
+      <span class="out-title">docker run <span class="out-sub">— start the AutoNugget daemon</span></span>
+      <button class="btn-copy" onclick="doCopy('out-install',this)">Copy</button>
+    </div>
+    <pre class="out" id="out-install"></pre>
+  </div>
+
+  <div class="cbrow" style="margin-top:16px">
+    <input type="checkbox" id="install-watchtower" onchange="genInstall()" checked>
+    <label for="install-watchtower">Include Watchtower auto-update <span style="color:var(--muted)">(recommended — keeps autonugget current)</span></label>
+  </div>
+
+  <div id="watchtower-block" class="out-block" style="margin-top:12px">
+    <div class="out-header">
+      <span class="out-title">Watchtower <span class="out-sub">— auto-update autonugget when a new image is pushed</span></span>
+      <button class="btn-copy" onclick="doCopy('out-watchtower',this)">Copy</button>
+    </div>
+    <pre class="out" id="out-watchtower">docker run -d \
+  --name watchtower \
+  --restart unless-stopped \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  containrrr/watchtower --cleanup autonugget</pre>
+  </div>
+
+</div><!-- /panel-install -->
+
 <script>
 /* ─────────────────────────── state ─────────────────────────── */
 let cfgPlatform = 'linux';
@@ -488,8 +524,9 @@ let artistSeq   = 0;
 
 /* ─────────────────────────── tabs ──────────────────────────── */
 function switchTab(t) {
+  const tabNames = ['config', 'cli', 'install'];
   document.querySelectorAll('.tab').forEach((el, i) =>
-    el.classList.toggle('active', ['config','cli'][i] === t));
+    el.classList.toggle('active', tabNames[i] === t));
   document.querySelectorAll('.panel').forEach(el => el.classList.remove('active'));
   document.getElementById('panel-' + t).classList.add('active');
 }
@@ -501,17 +538,30 @@ function setCfgPlatform(p, btn) {
     .forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
 
-  const ffmpegCb   = document.getElementById('c-ffmpeg');
-  const outHint    = document.getElementById('c-out-hint');
-  const writePath  = document.getElementById('c-write-path');
+  const ffmpegCb  = document.getElementById('c-ffmpeg');
+  const outHint   = document.getElementById('c-out-hint');
+  const outField  = document.getElementById('c-out');
+  const stateField = document.getElementById('c-state');
+  const writePath = document.getElementById('c-write-path');
+
+  const linuxDefaults  = ['/mnt/user/media/Nugs', '', 'downloads'];
+  const winDefaults    = ['/mnt/user/appdata/autonugget/state.json', ''];
 
   if (p === 'linux') {
     ffmpegCb.checked = true;
-    outHint.textContent = 'Path inside the container — mount this as a Docker volume';
+    outHint.innerHTML = 'Folder where downloads will be saved (e.g. <code style="font-family:monospace">/mnt/user/media/Nugs</code>)';
+    if (!outField.value || outField.value === 'C:\\Users\\YourName\\Nugs')
+      outField.value = '/mnt/user/media/Nugs';
+    if (!stateField.value || stateField.value === 'C:\\Users\\YourName\\autonugget\\state.json')
+      stateField.value = '/mnt/user/appdata/autonugget/state.json';
     writePath.value = '/mnt/user/appdata/autonugget/config.json';
   } else {
     ffmpegCb.checked = false;
     outHint.textContent = 'Relative or absolute path where files are saved';
+    if (!outField.value || outField.value === '/mnt/user/media/Nugs')
+      outField.value = 'C:\\Users\\YourName\\Nugs';
+    if (!stateField.value || stateField.value === '/mnt/user/appdata/autonugget/state.json')
+      stateField.value = 'C:\\Users\\YourName\\autonugget\\state.json';
     writePath.value = 'C:\\Users\\YourName\\autonugget\\config.json';
   }
   genConfig();
@@ -522,10 +572,11 @@ function setCliPlatform(p, btn) {
   document.querySelectorAll('#panel-cli .ptoggle')
     .forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('install-linux').style.display    = p === 'linux'   ? 'block' : 'none';
-  document.getElementById('install-windows').style.display  = p === 'windows' ? 'block' : 'none';
-  document.getElementById('cli-out-field').style.display    = p === 'windows' ? 'flex'  : 'none';
-  document.getElementById('cli-out-docker-note').style.display = p === 'linux' ? 'flex' : 'none';
+  document.getElementById('install-linux').style.display       = p === 'linux'   ? 'block' : 'none';
+  document.getElementById('install-windows').style.display     = p === 'windows' ? 'block' : 'none';
+  document.getElementById('cli-out-field').style.display       = p === 'windows' ? 'flex'  : 'none';
+  document.getElementById('cli-out-docker-note').style.display = p === 'linux'   ? 'flex'  : 'none';
+  genCliWrapper();
   genCli();
 }
 
@@ -581,7 +632,7 @@ function addArtist() {
       <div class="field" style="justify-content:flex-end">
         <div class="cbrow">
           <input type="checkbox" class="a-fill" onchange="genConfig()">
-          <label>backfillAll — download entire back-catalog on first run</label>
+          <label>backfillAll — download entire back-catalog on first run (default: false = only new releases)</label>
         </div>
       </div>
     </div>`;
@@ -597,17 +648,17 @@ function rmArtist(uid) {
 /* ─────────────────────────── config generator ───────────────── */
 function genConfig() {
   const cfg = {
-    email:            document.getElementById('c-email').value,
-    password:         document.getElementById('c-pass').value,
-    format:           parseInt(document.getElementById('c-fmt').value),
-    videoFormat:      parseInt(document.getElementById('c-vfmt').value),
-    outPath:          document.getElementById('c-out').value || 'downloads',
-    useFfmpegEnvVar:  document.getElementById('c-ffmpeg').checked,
-    watchlist:        [],
-    pollIntervalMins: parseInt(document.getElementById('c-interval').value) || 60,
-    notifyWebhookUrl: document.getElementById('c-wh-url').value,
-    notifyWebhookType:document.getElementById('c-wh-type').value,
-    stateFilePath:    document.getElementById('c-state').value || 'auto_nugget_state.json',
+    email:             document.getElementById('c-email').value,
+    password:          document.getElementById('c-pass').value,
+    format:            parseInt(document.getElementById('c-fmt').value),
+    videoFormat:       parseInt(document.getElementById('c-vfmt').value),
+    outPath:           document.getElementById('c-out').value || '/mnt/user/media/Nugs',
+    useFfmpegEnvVar:   document.getElementById('c-ffmpeg').checked,
+    watchlist:         [],
+    pollIntervalMins:  parseInt(document.getElementById('c-interval').value) || 60,
+    notifyWebhookUrl:  document.getElementById('c-wh-url').value,
+    notifyWebhookType: document.getElementById('c-wh-type').value,
+    stateFilePath:     document.getElementById('c-state').value || '/mnt/user/appdata/autonugget/state.json',
   };
 
   document.querySelectorAll('#wl-entries .wl-entry').forEach(entry => {
@@ -628,6 +679,8 @@ function genConfig() {
   const json = JSON.stringify(cfg, null, 2);
   document.getElementById('out-cfg').textContent = json;
   document.getElementById('out-write').textContent = buildWriteCmd(json);
+  genInstall();
+  genCliWrapper();
 }
 
 function buildWriteCmd(json) {
@@ -642,6 +695,48 @@ function buildWriteCmd(json) {
     // PowerShell here-string: closing '@ must be at column 0
     return `@'\n${json}\n'@ | Set-Content -Path "${path}" -Encoding UTF8`;
   }
+}
+
+/* ─────────────────────────── install generator ──────────────── */
+function genInstall() {
+  const configPath = document.getElementById('c-write-path').value ||
+    '/mnt/user/appdata/autonugget/config.json';
+
+  const cmd =
+    `docker run -d \\\n` +
+    `  --name autonugget \\\n` +
+    `  --restart unless-stopped \\\n` +
+    `  -v /mnt/user:/mnt/user \\\n` +
+    `  -v ${configPath}:/app/config.json:ro \\\n` +
+    `  ghcr.io/ctrlaltdelightongit/autonugget:latest`;
+
+  document.getElementById('out-install').textContent = cmd;
+
+  const showWatchtower = document.getElementById('install-watchtower').checked;
+  document.getElementById('watchtower-block').style.display = showWatchtower ? 'block' : 'none';
+}
+
+function goToInstall() {
+  genInstall();
+  switchTab('install');
+}
+
+/* ─────────────────────────── cli wrapper generator ──────────── */
+function genCliWrapper() {
+  const configPath = document.getElementById('c-write-path').value ||
+    '/mnt/user/appdata/autonugget/config.json';
+
+  const wrapper =
+    `cat > /usr/local/bin/nugs-dl << 'EOF'\n` +
+    `#!/bin/sh\n` +
+    `docker run --rm \\\n` +
+    `  -v /mnt/user:/mnt/user \\\n` +
+    `  -v ${configPath}:/app/config.json:ro \\\n` +
+    `  ghcr.io/ctrlaltdelightongit/autonugget:latest "$@"\n` +
+    `EOF\n` +
+    `chmod +x /usr/local/bin/nugs-dl`;
+
+  document.getElementById('install-cmd-linux').textContent = wrapper;
 }
 
 /* ─────────────────────────── cli generator ──────────────────── */
