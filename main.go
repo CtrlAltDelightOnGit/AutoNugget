@@ -80,6 +80,19 @@ var regexStrings = [11]string{
 	`^https://play.nugs.net/library/webcast/(\d+)$`,
 }
 
+var (
+	sanRegex         = regexp.MustCompile(sanRegexStr)
+	bitrateRegexComp = regexp.MustCompile(bitrateRegex)
+	durRegexComp     = regexp.MustCompile(durRegex)
+	compiledRegexes  = func() [11]*regexp.Regexp {
+		var r [11]*regexp.Regexp
+		for i, s := range regexStrings {
+			r[i] = regexp.MustCompile(s)
+		}
+		return r
+	}()
+)
+
 var qualityMap = map[string]Quality{
 	".alac16/": {Specs: "16-bit / 44.1 kHz ALAC", Extension: ".m4a", Format: 1},
 	".flac16/": {Specs: "16-bit / 44.1 kHz FLAC", Extension: ".flac", Format: 2},
@@ -299,7 +312,7 @@ func fileExists(path string) (bool, error) {
 }
 
 func sanitise(filename string) string {
-	san := regexp.MustCompile(sanRegexStr).ReplaceAllString(filename, "_")
+	san := sanRegex.ReplaceAllString(filename, "_")
 	return strings.TrimSuffix(san, "\t")
 }
 
@@ -402,8 +415,7 @@ func parseStreamParams(userId string, subInfo *SubInfo, isPromo bool) *StreamPar
 }
 
 func checkUrl(_url string) (string, int) {
-	for i, regexStr := range regexStrings {
-		regex := regexp.MustCompile(regexStr)
+	for i, regex := range compiledRegexes {
 		match := regex.FindStringSubmatch(_url)
 		if match != nil {
 			return match[1], i
@@ -577,8 +589,7 @@ func getTrackQual(quals []*Quality, wantFmt int) *Quality {
 }
 
 func extractBitrate(manUrl string) string {
-	regex := regexp.MustCompile(bitrateRegex)
-	match := regex.FindStringSubmatch(manUrl)
+	match := bitrateRegexComp.FindStringSubmatch(manUrl)
 	if match != nil {
 		return match[1]
 	}
@@ -1183,8 +1194,7 @@ func downloadLstream(videoPath, baseUrl string, segUrls []string) error {
 }
 
 func extractDuration(errStr string) string {
-	regex := regexp.MustCompile(durRegex)
-	match := regex.FindStringSubmatch(errStr)
+	match := durRegexComp.FindStringSubmatch(errStr)
 	if match != nil {
 		return match[1]
 	}
