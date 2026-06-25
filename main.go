@@ -723,11 +723,8 @@ func hlsOnly(trackPath, manUrl, ffmpegNameStr string) error {
 	if err != nil {
 		return err
 	}
+	defer os.Remove("temp_enc.ts")
 	decData, err := decryptTrack(keyBytes, iv)
-	if err != nil {
-		return err
-	}
-	err = os.Remove("temp_enc.ts")
 	if err != nil {
 		return err
 	}
@@ -1477,7 +1474,7 @@ func video(videoID, uguID string, cfg *Config, streamParams *StreamParams, _meta
 	}
 
 	// Player album page videos aren't always only the first seg for the entire vid.
-	isLstream = segUrls[0] != segUrls[1]
+	isLstream = len(segUrls) >= 2 && segUrls[0] != segUrls[1]
 
 	if !isLstream {
 		fmt.Printf("%.3f FPS, ", variant.FrameRate)
