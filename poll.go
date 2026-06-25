@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -64,7 +65,8 @@ func runPollMode(dryRun bool) {
 	runPoller(cfg, streamParams)
 }
 
-func buildHistCache(watchlist []WatchedArtist) map[string]bool {
+func buildHistCache(watchlist []WatchedArtist, stateFilePath string) map[string]bool {
+	histDir := filepath.Dir(stateFilePath)
 	hs := make(map[string]bool)
 	for _, wa := range watchlist {
 		artistIntID, err := strconv.Atoi(wa.ArtistID)
@@ -72,7 +74,7 @@ func buildHistCache(watchlist []WatchedArtist) map[string]bool {
 			continue
 		}
 		for _, suffix := range []string{historySuffixAudio, historySuffixVideo} {
-			hf := getHistoryFileName(artistIntID, suffix)
+			hf := getHistoryFileName(artistIntID, suffix, histDir)
 			f, err := os.Open(hf)
 			if err != nil {
 				continue
@@ -96,7 +98,7 @@ func runPoller(cfg *Config, streamParams *StreamParams) {
 	if interval <= 0 {
 		interval = defaultPollIntervalMins
 	}
-	histCache := buildHistCache(cfg.Watchlist)
+	histCache := buildHistCache(cfg.Watchlist, cfg.StateFilePath)
 	log.Printf("[poll] starting; %d artists, interval: %d min, state: %s",
 		len(cfg.Watchlist), interval, stateFile)
 
@@ -162,7 +164,7 @@ func pollOnce(cfg *Config, streamParams *StreamParams, stateFile string, histCac
 				// Skip containers already recorded in the history cache (guards state-reset edge case)
 				alreadyInHist := false
 				for _, suffix := range []string{historySuffixAudio, historySuffixVideo} {
-					if histCache[getHistoryFileName(artistIntID, suffix)+"\x00"+albumIDStr] {
+					if histCache[getHistoryFileName(artistIntID, suffix, filepath.Dir(cfg.StateFilePath))+"\x00"+albumIDStr] {
 						alreadyInHist = true
 						break
 					}
@@ -196,7 +198,7 @@ func pollOnce(cfg *Config, streamParams *StreamParams, stateFile string, histCac
 
 				// Update in-memory history cache so subsequent cycles don't re-check disk
 				for _, suffix := range []string{historySuffixAudio, historySuffixVideo} {
-					histCache[getHistoryFileName(artistIntID, suffix)+"\x00"+albumIDStr] = true
+					histCache[getHistoryFileName(artistIntID, suffix, filepath.Dir(cfg.StateFilePath))+"\x00"+albumIDStr] = true
 				}
 
 				// State written per successful download (crash safety — ARCHITECTURE invariant)

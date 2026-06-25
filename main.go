@@ -863,7 +863,7 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 		historySuffix = historySuffixVideo
 	}
 
-	alreadyDownloaded, err := checkHistory(albumID, getHistoryFileName(meta.ArtistID, historySuffix))
+	alreadyDownloaded, err := checkHistory(albumID, getHistoryFileName(meta.ArtistID, historySuffix, filepath.Dir(cfg.StateFilePath)))
 	if err != nil {
 		fmt.Println("Error checking history:", err)
 		return nil
@@ -915,7 +915,7 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 	}
 
 	// append the item to the history
-	err = appendToHistory(albumID, getHistoryFileName(meta.ArtistID, historySuffix))
+	err = appendToHistory(albumID, getHistoryFileName(meta.ArtistID, historySuffix, filepath.Dir(cfg.StateFilePath)))
 	if err != nil {
 		fmt.Println("Error updating history:", err)
 		return nil
@@ -1382,7 +1382,7 @@ func video(videoID, uguID string, cfg *Config, streamParams *StreamParams, _meta
 		meta = m.Response
 	}
 
-	alreadyDownloaded, err := checkHistory(videoID, getHistoryFileName(meta.ArtistID, historySuffixVideo))
+	alreadyDownloaded, err := checkHistory(videoID, getHistoryFileName(meta.ArtistID, historySuffixVideo, filepath.Dir(cfg.StateFilePath)))
 	if err != nil {
 		fmt.Println("Error checking history:", err)
 		return nil
@@ -1501,7 +1501,7 @@ func video(videoID, uguID string, cfg *Config, streamParams *StreamParams, _meta
 	}
 
 	// append the item to the history
-	err = appendToHistory(videoID, getHistoryFileName(meta.ArtistID, historySuffixVideo))
+	err = appendToHistory(videoID, getHistoryFileName(meta.ArtistID, historySuffixVideo, filepath.Dir(cfg.StateFilePath)))
 	if err != nil {
 		fmt.Println("Error updating history:", err)
 		return nil
@@ -1589,8 +1589,12 @@ func checkHistory(url, historyFile string) (bool, error) {
 	return false, scanner.Err()
 }
 
-func getHistoryFileName(artistId int, hType string) string {
-	return strconv.Itoa(artistId) + "_" + hType + "_" + historyFileName + historyFileExtension
+func getHistoryFileName(artistId int, hType, dir string) string {
+	name := strconv.Itoa(artistId) + "_" + hType + "_" + historyFileName + historyFileExtension
+	if dir == "" {
+		return name
+	}
+	return filepath.Join(dir, name)
 }
 
 func init() {
