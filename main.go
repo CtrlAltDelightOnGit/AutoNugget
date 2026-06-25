@@ -873,7 +873,6 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 		return nil
 	}
 
-	//todo update the feedback text here
 	if alreadyDownloaded {
 		fmt.Println("Album already downloaded. Skipping.")
 		return nil
@@ -885,7 +884,6 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 			return nil
 		}
 		if cfg.ForceVideo || trackTotal < 1 {
-			// here fec
 			return video(albumID, "", cfg, streamParams, meta, false)
 		}
 	}
@@ -921,8 +919,7 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 	// append the item to the history
 	err = appendToHistory(albumID, getHistoryFileName(meta.ArtistID, historySuffix, filepath.Dir(cfg.StateFilePath)))
 	if err != nil {
-		fmt.Println("Error updating history:", err)
-		return nil
+		return fmt.Errorf("history write failed: %w", err)
 	}
 
 	return nil
@@ -1507,8 +1504,7 @@ func video(videoID, uguID string, cfg *Config, streamParams *StreamParams, _meta
 	// append the item to the history
 	err = appendToHistory(videoID, getHistoryFileName(meta.ArtistID, historySuffixVideo, filepath.Dir(cfg.StateFilePath)))
 	if err != nil {
-		fmt.Println("Error updating history:", err)
-		return nil
+		return fmt.Errorf("history write failed: %w", err)
 	}
 
 	return nil

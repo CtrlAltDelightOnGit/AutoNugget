@@ -25,6 +25,12 @@ func validatePollConfig(cfg *Config) error {
 			return fmt.Errorf("poll: watchlist[%d] has invalid format %d (must be 1–5 or -1 for global)", i, wa.Format)
 		}
 	}
+	if cfg.StateFilePath == "" {
+		return fmt.Errorf("poll: stateFilePath is required — set an absolute path in config.json")
+	}
+	if !filepath.IsAbs(cfg.StateFilePath) {
+		log.Printf("[poll] WARN: stateFilePath %q is a relative path — state and history files will be lost on container restart", cfg.StateFilePath)
+	}
 	return nil
 }
 
@@ -110,6 +116,7 @@ func runPoller(cfg *Config, streamParams *StreamParams) {
 
 func pollOnce(cfg *Config, streamParams *StreamParams, stateFile string, histCache map[string]bool) {
 	state := loadState(stateFile)
+	histDir := filepath.Dir(cfg.StateFilePath)
 
 	for _, wa := range cfg.Watchlist {
 		log.Printf("[poll] checking artist %s (%s)", wa.ArtistID, wa.Name)
@@ -168,7 +175,7 @@ func pollOnce(cfg *Config, streamParams *StreamParams, stateFile string, histCac
 				// Skip containers already recorded in the history cache (guards state-reset edge case)
 				alreadyInHist := false
 				for _, suffix := range []string{historySuffixAudio, historySuffixVideo} {
-					if histCache[getHistoryFileName(artistIntID, suffix, filepath.Dir(cfg.StateFilePath))+"\x00"+albumIDStr] {
+					if histCache[getHistoryFileName(artistIntID, suffix, histDir)+"\x00"+albumIDStr] {
 						alreadyInHist = true
 						break
 					}
@@ -202,7 +209,7 @@ func pollOnce(cfg *Config, streamParams *StreamParams, stateFile string, histCac
 
 				// Update in-memory history cache so subsequent cycles don't re-check disk
 				for _, suffix := range []string{historySuffixAudio, historySuffixVideo} {
-					histCache[getHistoryFileName(artistIntID, suffix, filepath.Dir(cfg.StateFilePath))+"\x00"+albumIDStr] = true
+					histCache[getHistoryFileName(artistIntID, suffix, histDir)+"\x00"+albumIDStr] = true
 				}
 
 				// State written per successful download (crash safety — ARCHITECTURE invariant)
