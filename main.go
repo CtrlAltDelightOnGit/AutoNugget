@@ -428,7 +428,11 @@ func checkUrl(_url string) (string, int) {
 }
 
 func extractLegToken(tokenStr string) (string, string, error) {
-	payload := strings.SplitN(tokenStr, ".", 3)[1]
+	parts := strings.SplitN(tokenStr, ".", 3)
+	if len(parts) != 3 {
+		return "", "", errors.New("access token is not a valid JWT")
+	}
+	payload := parts[1]
 	decoded, err := base64.RawURLEncoding.DecodeString(payload)
 	if err != nil {
 		return "", "", err
@@ -617,7 +621,10 @@ func parseHlsMaster(qual *Quality) error {
 	if err != nil {
 		return err
 	}
-	master := playlist.(*m3u8.MasterPlaylist)
+	master, ok := playlist.(*m3u8.MasterPlaylist)
+	if !ok {
+		return errors.New("expected master playlist")
+	}
 	sort.Slice(master.Variants, func(x, y int) bool {
 		return master.Variants[x].Bandwidth > master.Variants[y].Bandwidth
 	})
@@ -655,10 +662,6 @@ func getKey(keyUrl string) ([]byte, error) {
 }
 
 
-func pkcs5Trimming(data []byte) []byte {
-	padding := data[len(data)-1]
-	return data[:len(data)-int(padding)]
-}
 
 func decryptTrack(key, iv []byte) ([]byte, error) {
 	encData, err := os.ReadFile("temp_enc.ts")
@@ -1066,7 +1069,10 @@ func chooseVariant(manifestUrl, wantRes string) (*m3u8.Variant, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	master := playlist.(*m3u8.MasterPlaylist)
+	master, ok := playlist.(*m3u8.MasterPlaylist)
+	if !ok {
+		return nil, "", errors.New("expected master playlist")
+	}
 	sort.Slice(master.Variants, func(x, y int) bool {
 		return master.Variants[x].Bandwidth > master.Variants[y].Bandwidth
 	})
