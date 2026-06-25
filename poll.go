@@ -151,7 +151,11 @@ func pollOnce(cfg *Config, streamParams *StreamParams, stateFile string, histCac
 		if wa.OutPath != "" {
 			artistCfg.OutPath = wa.OutPath
 		}
-		artistIntID, _ := strconv.Atoi(wa.ArtistID)
+		artistIntID, atoiErr := strconv.Atoi(wa.ArtistID)
+		if atoiErr != nil {
+			log.Printf("[poll] WARN: artist %q has non-numeric ArtistID %q — skipping histCache check", wa.Name, wa.ArtistID)
+			artistIntID = -1
+		}
 
 		knownSet := buildKnownSet(state[wa.ArtistID])
 		for _, meta := range containers {

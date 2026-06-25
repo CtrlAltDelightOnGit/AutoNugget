@@ -478,6 +478,10 @@ func getArtistMeta(artistId string) ([]*ArtistMeta, error) {
 	query.Set("availType", "1")
 	query.Set("vdisp", "1")
 	for {
+		if offset > 20000 {
+			log.Printf("[poll] WARN: pagination exceeded 20000 containers for artist %s — stopping", artistId)
+			break
+		}
 		query.Set("startOffset", strconv.Itoa(offset))
 		var obj ArtistMeta
 		if err := apiGet(streamApiBase+"api.aspx?"+query.Encode(), "", userAgent, &obj); err != nil {
