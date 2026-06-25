@@ -1623,7 +1623,19 @@ func initSession(cfg *Config) (token string, subInfo *SubInfo, streamParams *Str
 	}
 	userId, err := getUserInfo(token)
 	if err != nil {
-		return "", nil, nil, err
+		var httpErr *HTTPError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == 401 && cfg.Token != "" {
+			log.Printf("[poll] WARN: hardcoded token expired (401) — falling back to email/password auth")
+			cfg.Token = ""
+			token, err = auth(cfg.Email, cfg.Password)
+			if err != nil {
+				return "", nil, nil, err
+			}
+			userId, err = getUserInfo(token)
+		}
+		if err != nil {
+			return "", nil, nil, err
+		}
 	}
 	subInfo, err = getSubInfo(token)
 	if err != nil {

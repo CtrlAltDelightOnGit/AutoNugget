@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
+	"syscall"
 	"time"
 )
 
@@ -108,9 +110,17 @@ func runPoller(cfg *Config, streamParams *StreamParams) {
 	log.Printf("[poll] starting; %d artists, interval: %d min, state: %s",
 		len(cfg.Watchlist), interval, stateFile)
 
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
 	for {
 		pollOnce(cfg, streamParams, stateFile, histCache)
-		time.Sleep(time.Duration(interval) * time.Minute)
+		select {
+		case <-stop:
+			log.Printf("[poll] received shutdown signal — exiting cleanly")
+			return
+		case <-time.After(time.Duration(interval) * time.Minute):
+		}
 	}
 }
 
