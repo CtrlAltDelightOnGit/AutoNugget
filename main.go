@@ -263,11 +263,11 @@ func parseCfg(args *Args) (*Config, error) {
 	}
 	cfg.ForceVideo = args.ForceVideo
 
-	if args.SkipVideos == true || args.AudioOnly == true{
+	if args.SkipVideos || args.AudioOnly {
 		cfg.SkipVideos = true
 	}
 
-	if args.VideoOnly == true {
+	if args.VideoOnly {
 		cfg.VideoOnly = true
 		cfg.ForceVideo = true
 	}
@@ -309,6 +309,13 @@ func sanitise(filename string) string {
 	return strings.TrimSuffix(san, "\t")
 }
 
+type HTTPError struct {
+	StatusCode int
+	Status     string
+}
+
+func (e *HTTPError) Error() string { return e.Status }
+
 func auth(email, pwd string) (string, error) {
 	data := url.Values{}
 	data.Set("client_id", clientId)
@@ -328,7 +335,7 @@ func auth(email, pwd string) (string, error) {
 	}
 	defer do.Body.Close()
 	if do.StatusCode != http.StatusOK {
-		return "", errors.New(do.Status)
+		return "", &HTTPError{StatusCode: do.StatusCode, Status: do.Status}
 	}
 	var obj Auth
 	err = json.NewDecoder(do.Body).Decode(&obj)
@@ -353,7 +360,7 @@ func apiGet(rawURL, token, ua string, target interface{}) error {
 	}
 	defer do.Body.Close()
 	if do.StatusCode != http.StatusOK {
-		return errors.New(do.Status)
+		return &HTTPError{StatusCode: do.StatusCode, Status: do.Status}
 	}
 	return json.NewDecoder(do.Body).Decode(target)
 }
@@ -888,7 +895,7 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 		}
 	}
 
-	if cfg.VideoOnly == true {
+	if cfg.VideoOnly {
 		fmt.Println("Audio only album, skipped.")
 		return nil
 	}
@@ -945,9 +952,11 @@ func artist(artistId string, cfg *Config, streamParams *StreamParams) error {
 	}
 	fmt.Println(meta[0].Response.Containers[0].ArtistName)
 	albumTotal := getAlbumTotal(meta)
+	albumNum := 0
 	for _, _meta := range meta {
-		for albumNum, container := range _meta.Response.Containers {
-			fmt.Printf("Item %d of %d:\n", albumNum+1, albumTotal)
+		for _, container := range _meta.Response.Containers {
+			albumNum++
+			fmt.Printf("Item %d of %d:\n", albumNum, albumTotal)
 			if cfg.SkipVideos {
 				err = album("", cfg, streamParams, container)
 			} else {
@@ -1039,7 +1048,7 @@ func chooseVariant(manifestUrl, wantRes string) (*m3u8.Variant, string, error) {
 	}
 	defer req.Body.Close()
 	if req.StatusCode != http.StatusOK {
-		return nil, "", errors.New(req.Status)
+		return nil, "", &HTTPError{StatusCode: req.StatusCode, Status: req.Status}
 	}
 	playlist, _, err := m3u8.DecodeFrom(req.Body, true)
 	if err != nil {
@@ -1483,18 +1492,13 @@ func video(videoID, uguID string, cfg *Config, streamParams *StreamParams, _meta
 			fmt.Println("Failed to write chapters file.")
 			return err
 		}
+		defer os.Remove(chapsFileFname)
 	}
 	fmt.Println("Putting into MP4 container...")
 	err = tsToMp4(VidPathTs, vidPath, cfg.FfmpegNameStr, chapsAvail)
 	if err != nil {
 		fmt.Println("Failed to put TS into MP4 container.")
 		return err
-	}
-	if chapsAvail {
-		err = os.Remove(chapsFileFname)
-		if err != nil {
-			fmt.Println("Failed to delete chapters file.")
-		}
 	}
 	err = os.Remove(VidPathTs)
 	if err != nil {
