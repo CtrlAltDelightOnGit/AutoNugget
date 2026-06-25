@@ -225,7 +225,7 @@ func processUrls(urls []string) ([]string, error) {
 }
 
 func parseCfg(args *Args) (*Config, error) {
-	cfg, err := readConfig()
+	cfg, err := readConfig(args.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -276,8 +276,8 @@ func parseCfg(args *Args) (*Config, error) {
 	return cfg, nil
 }
 
-func readConfig() (*Config, error) {
-	data, err := os.ReadFile("config.json")
+func readConfig(path string) (*Config, error) {
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -1597,7 +1597,7 @@ func getHistoryFileName(artistId int, hType, dir string) string {
 	return filepath.Join(dir, name)
 }
 
-func init() {
+func printBanner() {
 	fmt.Println(`
  _             _     __ _  _            __    __   ___  _
 /_\     _  _  | |_ / _ \| \| |  _  _  / _' |/ _' |/ -_)| |_
@@ -1654,11 +1654,13 @@ func main() {
 				log.Fatalf("poll: %v", parseErr)
 			}
 		}
-		runPollMode(pollCmd.DryRun)
+		printBanner()
+		runPollMode(pollCmd.DryRun, pollCmd.Config)
 		return
 	}
 	var args Args
 	arg.MustParse(&args)
+	printBanner()
 	cfg, err := parseCfg(&args)
 	if err != nil {
 		log.Fatalf("Failed to parse config/args.: %v", err)

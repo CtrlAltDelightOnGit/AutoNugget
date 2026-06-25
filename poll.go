@@ -34,8 +34,8 @@ func validatePollConfig(cfg *Config) error {
 	return nil
 }
 
-func runPollMode(dryRun bool) {
-	cfg, err := readConfig()
+func runPollMode(dryRun bool, configPath string) {
+	cfg, err := readConfig(configPath)
 	if err != nil {
 		log.Fatalf("Failed to read config.: %v", err)
 	}

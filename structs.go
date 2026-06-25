@@ -41,11 +41,13 @@ type WatchedArtist struct {
 }
 
 type PollCmd struct {
-	DryRun bool `arg:"--dry-run" help:"Log what would be downloaded without downloading"`
+	DryRun bool   `arg:"--dry-run" help:"Log what would be downloaded without downloading"`
+	Config string `arg:"--config" default:"config.json" help:"Path to config.json"`
 }
 
 type Args struct {
 	Urls         []string `arg:"positional, required"`
+	Config       string   `arg:"--config" default:"config.json" help:"Path to config.json"`
 	Format       int      `arg:"-f" default:"-1" help:"Track download format.\n\t\t\t 1 = 16-bit / 44.1 kHz ALAC\n\t\t\t 2 = 16-bit / 44.1 kHz FLAC\n\t\t\t 3 = 24-bit / 48 kHz MQA\n\t\t\t 4 = 360 Reality Audio / best available\n\t\t\t 5 = 150 Kbps AAC"`
 	VideoFormat  int      `arg:"-F" default:"-1" help:"Video download format.\n\t\t\t 1 = 480p\n\t\t\t 2 = 720p\n\t\t\t 3 = 1080p\n\t\t\t 4 = 1440p\n\t\t\t 5 = 4K / best available"`
 	OutPath      string   `arg:"-o" help:"Where to download to. Path will be made if it doesn't already exist."`
