@@ -1251,8 +1251,15 @@ func getDuration(tsPath, ffmpegNameStr string) (int, error) {
 func getNextChapStart(chapters []interface{}, idx int) float64 {
 	for i, chapter := range chapters {
 		if i == idx {
-			m := chapter.(map[string]interface{})
-			return m["chapterSeconds"].(float64)
+			m, ok := chapter.(map[string]interface{})
+			if !ok {
+				return 0
+			}
+			secs, ok := m["chapterSeconds"].(float64)
+			if !ok {
+				return 0
+			}
+			return secs
 		}
 	}
 	return 0
@@ -1277,9 +1284,14 @@ func writeChapsFile(chapters []interface{}, dur int) error {
 		i++
 		isLast := i == chaptersCount
 
-		// casting to struct won't work.
-		m := chapter.(map[string]interface{})
-		start := m["chapterSeconds"].(float64)
+		m, ok := chapter.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		start, ok := m["chapterSeconds"].(float64)
+		if !ok {
+			continue
+		}
 
 		if !isLast {
 			nextChapStart = getNextChapStart(chapters, i)
