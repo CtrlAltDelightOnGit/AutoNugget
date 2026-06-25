@@ -40,6 +40,10 @@ type WatchedArtist struct {
 	Name        string `json:"name"`        // human-readable label for notifications
 }
 
+type PollCmd struct {
+	DryRun bool `arg:"--dry-run" help:"Log what would be downloaded without downloading"`
+}
+
 type Args struct {
 	Urls         []string `arg:"positional, required"`
 	Format       int      `arg:"-f" default:"-1" help:"Track download format.\n\t\t\t 1 = 16-bit / 44.1 kHz ALAC\n\t\t\t 2 = 16-bit / 44.1 kHz FLAC\n\t\t\t 3 = 24-bit / 48 kHz MQA\n\t\t\t 4 = 360 Reality Audio / best available\n\t\t\t 5 = 150 Kbps AAC"`

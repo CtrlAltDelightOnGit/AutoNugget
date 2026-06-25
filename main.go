@@ -224,12 +224,11 @@ func processUrls(urls []string) ([]string, error) {
 	return processed, nil
 }
 
-func parseCfg() (*Config, error) {
+func parseCfg(args *Args) (*Config, error) {
 	cfg, err := readConfig()
 	if err != nil {
 		return nil, err
 	}
-	args := parseArgs()
 	if args.Format != -1 {
 		cfg.Format = args.Format
 	}
@@ -288,12 +287,6 @@ func readConfig() (*Config, error) {
 		return nil, err
 	}
 	return &obj, nil
-}
-
-func parseArgs() *Args {
-	var args Args
-	arg.MustParse(&args)
-	return &args
 }
 
 func makeDirs(path string) error {
@@ -1643,10 +1636,26 @@ func main() {
 		panic(err)
 	}
 	if len(os.Args) > 1 && os.Args[1] == "poll" {
-		runPollMode()
+		var pollCmd PollCmd
+		p, err := arg.NewParser(arg.Config{Out: os.Stdout}, &pollCmd)
+		if err != nil {
+			log.Fatalf("poll: failed to create parser: %v", err)
+		}
+		if parseErr := p.Parse(os.Args[2:]); parseErr != nil {
+			switch parseErr {
+			case arg.ErrHelp:
+				p.WriteHelp(os.Stdout)
+				os.Exit(0)
+			default:
+				log.Fatalf("poll: %v", parseErr)
+			}
+		}
+		runPollMode(pollCmd.DryRun)
 		return
 	}
-	cfg, err := parseCfg()
+	var args Args
+	arg.MustParse(&args)
+	cfg, err := parseCfg(&args)
 	if err != nil {
 		log.Fatalf("Failed to parse config/args.: %v", err)
 	}

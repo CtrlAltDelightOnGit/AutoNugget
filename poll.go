@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"os"
@@ -26,16 +27,12 @@ func validatePollConfig(cfg *Config) error {
 	return nil
 }
 
-func runPollMode() {
+func runPollMode(dryRun bool) {
 	cfg, err := readConfig()
 	if err != nil {
 		log.Fatalf("Failed to read config.: %v", err)
 	}
-	for _, arg := range os.Args[2:] {
-		if arg == "--dry-run" {
-			cfg.DryRun = true
-		}
-	}
+	cfg.DryRun = dryRun
 	if err := validatePollConfig(cfg); err != nil {
 		log.Fatalf("[poll] config error: %v", err)
 	}
@@ -67,6 +64,29 @@ func runPollMode() {
 	runPoller(cfg, streamParams)
 }
 
+func buildHistCache(watchlist []WatchedArtist) map[string]bool {
+	hs := make(map[string]bool)
+	for _, wa := range watchlist {
+		artistIntID, err := strconv.Atoi(wa.ArtistID)
+		if err != nil {
+			continue
+		}
+		for _, suffix := range []string{historySuffixAudio, historySuffixVideo} {
+			hf := getHistoryFileName(artistIntID, suffix)
+			f, err := os.Open(hf)
+			if err != nil {
+				continue
+			}
+			scanner := bufio.NewScanner(f)
+			for scanner.Scan() {
+				hs[hf+"\x00"+scanner.Text()] = true
+			}
+			f.Close()
+		}
+	}
+	return hs
+}
+
 func runPoller(cfg *Config, streamParams *StreamParams) {
 	stateFile := cfg.StateFilePath
 	if stateFile == "" {
@@ -76,16 +96,17 @@ func runPoller(cfg *Config, streamParams *StreamParams) {
 	if interval <= 0 {
 		interval = defaultPollIntervalMins
 	}
+	histCache := buildHistCache(cfg.Watchlist)
 	log.Printf("[poll] starting; %d artists, interval: %d min, state: %s",
 		len(cfg.Watchlist), interval, stateFile)
 
 	for {
-		pollOnce(cfg, streamParams, stateFile)
+		pollOnce(cfg, streamParams, stateFile, histCache)
 		time.Sleep(time.Duration(interval) * time.Minute)
 	}
 }
 
-func pollOnce(cfg *Config, streamParams *StreamParams, stateFile string) {
+func pollOnce(cfg *Config, streamParams *StreamParams, stateFile string, histCache map[string]bool) {
 	state := loadState(stateFile)
 
 	for _, wa := range cfg.Watchlist {
@@ -128,6 +149,7 @@ func pollOnce(cfg *Config, streamParams *StreamParams, stateFile string) {
 		if wa.OutPath != "" {
 			artistCfg.OutPath = wa.OutPath
 		}
+		artistIntID, _ := strconv.Atoi(wa.ArtistID)
 
 		knownSet := buildKnownSet(state[wa.ArtistID])
 		for _, meta := range containers {
@@ -136,6 +158,24 @@ func pollOnce(cfg *Config, streamParams *StreamParams, stateFile string) {
 					continue
 				}
 				albumIDStr := strconv.Itoa(container.ContainerID)
+
+				// Skip containers already recorded in the history cache (guards state-reset edge case)
+				alreadyInHist := false
+				for _, suffix := range []string{historySuffixAudio, historySuffixVideo} {
+					if histCache[getHistoryFileName(artistIntID, suffix)+"\x00"+albumIDStr] {
+						alreadyInHist = true
+						break
+					}
+				}
+				if alreadyInHist {
+					markKnown(state, wa.ArtistID, container.ContainerID)
+					knownSet[container.ContainerID] = true
+					if err := saveState(stateFile, state); err != nil {
+						log.Printf("[poll] ERROR saving state: %v", err)
+					}
+					continue
+				}
+
 				log.Printf("[poll] NEW release: %s — %s (ID: %s)", wa.Name, container.ContainerInfo, albumIDStr)
 
 				if cfg.DryRun {
@@ -152,6 +192,11 @@ func pollOnce(cfg *Config, streamParams *StreamParams, stateFile string) {
 				if err := album(albumIDStr, &artistCfg, streamParams, nil); err != nil {
 					log.Printf("[poll] ERROR downloading %s: %v", albumIDStr, err)
 					continue
+				}
+
+				// Update in-memory history cache so subsequent cycles don't re-check disk
+				for _, suffix := range []string{historySuffixAudio, historySuffixVideo} {
+					histCache[getHistoryFileName(artistIntID, suffix)+"\x00"+albumIDStr] = true
 				}
 
 				// State written per successful download (crash safety — ARCHITECTURE invariant)
