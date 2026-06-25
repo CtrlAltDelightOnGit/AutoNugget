@@ -24,7 +24,8 @@ type Config struct {
 	VideoOnly        bool
 	SkipChapters     bool
 	Watchlist        []WatchedArtist `json:"watchlist"`
-	PollIntervalMins int             `json:"pollIntervalMins"`
+	PollIntervalMins     int             `json:"pollIntervalMins"`
+	ArtistCheckDelaySecs int             `json:"artistCheckDelaySecs,omitempty"`
 	NotifyWebhookURL string          `json:"notifyWebhookUrl"`
 	NotifyWebhookType string         `json:"notifyWebhookType"` // "discord" | "slack" | "generic"
 	StateFilePath    string          `json:"stateFilePath"`

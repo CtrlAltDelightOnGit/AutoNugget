@@ -78,6 +78,7 @@ Place `config.json` in the same directory as the binary. A minimal poll mode con
 |---|---|---|---|
 | `watchlist` | array | `[]` | Artists to monitor. See watchlist field reference below. |
 | `pollIntervalMins` | int | `60` | Minutes between poll cycles. Recommended minimum: 60. |
+| `artistCheckDelaySecs` | int | `0` | Seconds to wait between artist checks within a poll cycle. Set to `2`–`5` if you have a large watchlist or aggressive poll interval to avoid rate limiting. Omit or set to `0` to disable. |
 | `notifyWebhookUrl` | string | `""` | Webhook URL for new-release notifications. Leave blank to disable. |
 | `notifyWebhookType` | string | `"discord"` | Webhook format: `"discord"`, `"slack"`, or `"generic"`. |
 | `stateFilePath` | string | `"auto_nugget_state.json"` | Path to the state file that tracks already-seen releases. |
@@ -92,6 +93,10 @@ Place `config.json` in the same directory as the binary. A minimal poll mode con
 | `videoFormat` | int | `-1` | Per-artist video format override. `-1` = inherit global `videoFormat`. |
 | `backfillAll` | bool | `false` | `false` = snapshot existing catalog on first run, download only future releases. `true` = download the artist's entire catalog on first run. |
 | `outPath` | string | `""` | Per-artist download directory. `""` = inherit global `outPath`. |
+
+**Optional environment variables:**
+
+`NUGS_DEV_KEY` and `NUGS_CLIENT_ID` override the bundled API credentials. These are the same values published in the upstream open-source projects and are provided as a convenience — most users will never need to set them.
 
 ### 3. Format Values
 

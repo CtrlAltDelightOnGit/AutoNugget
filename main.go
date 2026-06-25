@@ -32,9 +32,12 @@ import (
 	"github.com/grafov/m3u8"
 )
 
+var (
+	devKey   = "x7f54tgbdyc64y656thy47er4"
+	clientId = "Eg7HuH873H65r5rt325UytR5429"
+)
+
 const (
-	devKey         = "x7f54tgbdyc64y656thy47er4"
-	clientId       = "Eg7HuH873H65r5rt325UytR5429"
 	layout         = "01/02/2006 15:04:05"
 	userAgent      = "NugsNet/3.26.724 (Android; 7.1.2; Asus; ASUS_Z01QD; Scale/2.0; en)"
 	userAgentTwo   = "nugsnetAndroid"
@@ -258,7 +261,7 @@ func parseCfg(args *Args) (*Config, error) {
 	}
 	cfg.Urls, err = processUrls(args.Urls)
 	if err != nil {
-		fmt.Println("Failed to process URLs.")
+		log.Printf("failed to process URLs: %v", err)
 		return nil, err
 	}
 	cfg.ForceVideo = args.ForceVideo
@@ -1074,7 +1077,7 @@ func chooseVariant(manifestUrl, wantRes string) (*m3u8.Variant, string, error) {
 		return nil, "", errors.New("No variant was chosen.")
 	}
 	if wantRes != origWantRes {
-		fmt.Println("Unavailable in your chosen format.")
+		log.Printf("format %q unavailable — using %q instead", origWantRes, wantRes)
 	}
 	wantRes = formatRes(wantRes)
 	return wantVariant, wantRes, nil
@@ -1539,7 +1542,7 @@ func resolveCatPlistId(plistUrl string) (string, error) {
 func catalogPlist(_plistId, legacyToken string, cfg *Config, streamParams *StreamParams) error {
 	plistId, err := resolveCatPlistId(_plistId)
 	if err != nil {
-		fmt.Println("Failed to resolve playlist ID.")
+		log.Printf("failed to resolve playlist ID: %v", err)
 		return err
 	}
 	err = playlist(plistId, legacyToken, cfg, streamParams, true)
@@ -1652,6 +1655,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	if v := os.Getenv("NUGS_DEV_KEY"); v != "" {
+		devKey = v
+	}
+	if v := os.Getenv("NUGS_CLIENT_ID"); v != "" {
+		clientId = v
+	}
 	if len(os.Args) > 1 && os.Args[1] == "poll" {
 		var pollCmd PollCmd
 		p, err := arg.NewParser(arg.Config{Out: os.Stdout}, &pollCmd)
@@ -1706,7 +1715,7 @@ func main() {
 		itemId, mediaType := checkUrl(_url)
 
 		if itemId == "" {
-			fmt.Println("Invalid URL:", _url)
+			log.Printf("invalid URL %q — skipping", _url)
 			continue
 		}
 

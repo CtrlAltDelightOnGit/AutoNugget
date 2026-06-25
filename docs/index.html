@@ -310,6 +310,11 @@
         <span class="hint">How often to check for new releases. Recommended minimum: 60</span>
       </div>
       <div class="field">
+        <label for="c-artist-delay">Artist Check Delay (seconds)</label>
+        <input type="number" id="c-artist-delay" value="0" min="0" oninput="genConfig()">
+        <span class="hint">Optional. Seconds to wait between artist checks (default: 0). Set to 2–5 if you have a large watchlist or aggressive poll interval to avoid rate limiting.</span>
+      </div>
+      <div class="field">
         <label for="c-state">State File Path</label>
         <input type="text" id="c-state" value="/mnt/user/appdata/autonugget/state.json" oninput="genConfig()">
         <span class="hint">Where to persist seen-releases state (e.g. <code style="font-family:monospace">/mnt/user/appdata/autonugget/state.json</code>). Must survive container restarts.</span>
@@ -685,6 +690,9 @@ function genConfig() {
     if (op) artist.outPath = op;
     cfg.watchlist.push(artist);
   });
+
+  const artistDelay = parseInt(document.getElementById('c-artist-delay').value) || 0;
+  if (artistDelay > 0) cfg.artistCheckDelaySecs = artistDelay;
 
   const json = JSON.stringify(cfg, null, 2);
   document.getElementById('out-cfg').textContent = json;

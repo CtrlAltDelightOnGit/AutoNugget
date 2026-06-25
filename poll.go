@@ -235,5 +235,8 @@ func pollOnce(cfg *Config, streamParams *StreamParams, stateFile string, histCac
 				}
 			}
 		}
+		if cfg.ArtistCheckDelaySecs > 0 {
+			time.Sleep(time.Duration(cfg.ArtistCheckDelaySecs) * time.Second)
+		}
 	}
 }
