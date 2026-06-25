@@ -62,7 +62,7 @@ const (
 
 var (
 	jar, _               = cookiejar.New(nil)
-	client               = &http.Client{Jar: jar}
+	client               = &http.Client{Jar: jar, Timeout: 30 * time.Second}
 )
 
 var regexStrings = [11]string{

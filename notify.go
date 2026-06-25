@@ -26,7 +26,12 @@ func sendNotification(webhookURL, webhookType, message string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := http.Post(webhookURL, "application/json", bytes.NewReader(body))
+	req, err := http.NewRequest("POST", webhookURL, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
