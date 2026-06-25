@@ -870,7 +870,7 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 		historySuffix = historySuffixVideo
 	}
 
-	alreadyDownloaded, err := checkHistory(albumID, getHistoryFileName(meta.ArtistID, historySuffix, meta.ArtistName))
+	alreadyDownloaded, err := checkHistory(albumID, getHistoryFileName(meta.ArtistID, historySuffix))
 	if err != nil {
 		fmt.Println("Error checking history:", err)
 		return nil
@@ -922,7 +922,7 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 	}
 
 	// append the item to the history
-	err = appendToHistory(albumID, getHistoryFileName(meta.ArtistID, historySuffix, meta.ArtistName))
+	err = appendToHistory(albumID, getHistoryFileName(meta.ArtistID, historySuffix))
 	if err != nil {
 		fmt.Println("Error updating history:", err)
 		return nil
@@ -1389,7 +1389,7 @@ func video(videoID, uguID string, cfg *Config, streamParams *StreamParams, _meta
 		meta = m.Response
 	}
 
-	alreadyDownloaded, err := checkHistory(videoID, getHistoryFileName(meta.ArtistID, historySuffixVideo, meta.ArtistName))
+	alreadyDownloaded, err := checkHistory(videoID, getHistoryFileName(meta.ArtistID, historySuffixVideo))
 	if err != nil {
 		fmt.Println("Error checking history:", err)
 		return nil
@@ -1508,7 +1508,7 @@ func video(videoID, uguID string, cfg *Config, streamParams *StreamParams, _meta
 	}
 
 	// append the item to the history
-	err = appendToHistory(videoID, getHistoryFileName(meta.ArtistID, historySuffixVideo, meta.ArtistName))
+	err = appendToHistory(videoID, getHistoryFileName(meta.ArtistID, historySuffixVideo))
 	if err != nil {
 		fmt.Println("Error updating history:", err)
 		return nil
@@ -1596,8 +1596,8 @@ func checkHistory(url, historyFile string) (bool, error) {
 	return false, scanner.Err()
 }
 
-func getHistoryFileName(artistId int, hType, artistName string) string {
-	return strconv.Itoa(artistId) + "_" + hType + "_" + historyFileName + "(" + artistName + ")" + historyFileExtension
+func getHistoryFileName(artistId int, hType string) string {
+	return strconv.Itoa(artistId) + "_" + hType + "_" + historyFileName + historyFileExtension
 }
 
 func init() {

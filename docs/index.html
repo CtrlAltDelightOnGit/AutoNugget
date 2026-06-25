@@ -247,10 +247,12 @@
       <div class="field">
         <label for="c-email">Email</label>
         <input type="text" id="c-email" placeholder="you@example.com" oninput="genConfig()">
+        <span class="hint">Your Nugs.net login email.</span>
       </div>
       <div class="field">
         <label for="c-pass">Password</label>
         <input type="password" id="c-pass" placeholder="your password" oninput="genConfig()">
+        <span class="hint">Your Nugs.net account password.</span>
       </div>
     </div>
   </div>
@@ -268,6 +270,7 @@
           <option value="4" selected>4 — 360 Reality Audio / Best available</option>
           <option value="5">5 — AAC 150 Kbps</option>
         </select>
+        <span class="hint">4 = 360 Reality Audio / best lossless (recommended). 2 = FLAC 16-bit. 5 = 150 kbps AAC lossy.</span>
       </div>
       <div class="field">
         <label for="c-vfmt">Video Format</label>
@@ -278,6 +281,7 @@
           <option value="4">4 — 1440p</option>
           <option value="5" selected>5 — 4K / Best available</option>
         </select>
+        <span class="hint">5 = 4K / best available (recommended). Only applies to video releases.</span>
       </div>
       <div class="field">
         <label for="c-out">Download Path</label>
@@ -637,8 +641,9 @@ function addArtist() {
       <div class="field" style="justify-content:flex-end">
         <div class="cbrow">
           <input type="checkbox" class="a-fill" onchange="genConfig()">
-          <label>backfillAll — download entire back-catalog on first run (default: false = only new releases)</label>
+          <label>backfillAll</label>
         </div>
+        <span class="hint">If checked, downloads ALL existing releases on first run. Leave unchecked to only pick up new releases going forward.</span>
       </div>
     </div>`;
   document.getElementById('wl-entries').appendChild(div);
@@ -718,7 +723,13 @@ function genInstall() {
     document.getElementById('install-cmd-title').innerHTML =
       `docker run <span class="out-sub">— dry-run test (one-shot, no downloads)</span>`;
   } else {
+    const appDir = configPath.lastIndexOf('/') > 0
+      ? configPath.substring(0, configPath.lastIndexOf('/'))
+      : '/mnt/user/appdata/autonugget';
     cmd =
+      `mkdir -p ${appDir}\n` +
+      `docker rm -f autonugget 2>/dev/null || true\n` +
+      `docker pull ghcr.io/ctrlaltdelightongit/autonugget:latest\n` +
       `docker run -d \\\n` +
       `  --name autonugget \\\n` +
       `  --restart unless-stopped \\\n` +
@@ -726,7 +737,7 @@ function genInstall() {
       `  -v ${configPath}:/app/config.json:ro \\\n` +
       `  ghcr.io/ctrlaltdelightongit/autonugget:latest`;
     document.getElementById('install-cmd-title').innerHTML =
-      `docker run <span class="out-sub">— start the AutoNugget daemon</span>`;
+      `Install script <span class="out-sub">— safe to run on first install or re-install</span>`;
   }
 
   document.getElementById('out-install').textContent = cmd;
