@@ -175,6 +175,8 @@ docker run -d \
   ghcr.io/ctrlaltdelightongit/autonugget:latest
 ```
 
+> **Video users:** If your watchlist includes video content, add `--stop-timeout 600` to your `docker run` command (or set **Stop Timeout** to `600` in Unraid's container settings). AutoNugget handles SIGTERM gracefully, but video downloads can take 10–30 minutes — Docker's default 10 s grace period sends SIGKILL mid-download, leaving a partial file that is cleaned up on the next poll cycle.
+
 The container defaults to poll mode. For one-off CLI downloads, install a wrapper script so you can just type `nugs-dl <url>`:
 
 ```bash

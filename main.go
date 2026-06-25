@@ -768,7 +768,7 @@ func processTrack(folPath string, trackNum, trackTotal int, cfg *Config, track *
 	wg.Wait()
 	for _, r := range probeResults {
 		if r.err != nil {
-			fmt.Println("failed to get track stream metadata")
+			log.Printf("failed to get track stream metadata: %v", r.err)
 			return r.err
 		}
 		if r.url == "" {
@@ -776,7 +776,7 @@ func processTrack(folPath string, trackNum, trackTotal int, cfg *Config, track *
 		}
 		quality := queryQuality(r.url)
 		if quality == nil {
-			fmt.Println("The API returned an unsupported format, URL:", r.url)
+			log.Printf("API returned unsupported format, URL: %s", r.url)
 			continue
 		}
 		quals = append(quals, quality)
@@ -789,7 +789,7 @@ func processTrack(folPath string, trackNum, trackTotal int, cfg *Config, track *
 	isHlsOnly := checkIfHlsOnly(quals)
 
 	if isHlsOnly {
-		fmt.Println("HLS-only track. Only AAC is available, tags currently unsupported.")
+		log.Printf("HLS-only track; only AAC is available, tags currently unsupported")
 		chosenQual = quals[0]
 		err := parseHlsMaster(chosenQual)
 		if err != nil {
@@ -809,7 +809,7 @@ func processTrack(folPath string, trackNum, trackTotal int, cfg *Config, track *
 			return errors.New("no track format was chosen")
 		}
 		if wantFmt != origWantFmt && origWantFmt != 4 {
-			fmt.Println("Unavailable in your chosen format.")
+			log.Printf("unavailable in your chosen format, using fallback")
 		}
 	}
 	trackFname := fmt.Sprintf(
@@ -818,11 +818,11 @@ func processTrack(folPath string, trackNum, trackTotal int, cfg *Config, track *
 	trackPath := filepath.Join(folPath, trackFname)
 	exists, err := fileExists(trackPath)
 	if err != nil {
-		fmt.Println("Failed to check if track already exists locally.")
+		log.Printf("failed to check if track already exists: %v", err)
 		return err
 	}
 	if exists {
-		fmt.Println("Track already exists locally.")
+		log.Printf("track already exists locally: %s", trackFname)
 		return nil
 	}
 	fmt.Printf(
@@ -835,7 +835,7 @@ func processTrack(folPath string, trackNum, trackTotal int, cfg *Config, track *
 		err = downloadTrack(trackPath, chosenQual.URL)
 	}
 	if err != nil {
-		fmt.Println("Failed to download track.")
+		log.Printf("failed to download track: %v", err)
 		return err
 	}
 	return nil
@@ -854,7 +854,7 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 	} else {
 		_meta, err := getAlbumMeta(albumID)
 		if err != nil {
-			fmt.Println("Failed to get metadata.")
+			log.Printf("failed to get album metadata: %v", err)
 			return err
 		}
 		meta = _meta.Response
@@ -876,18 +876,18 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 
 	alreadyDownloaded, err := checkHistory(albumID, getHistoryFileName(meta.ArtistID, historySuffix, filepath.Dir(cfg.StateFilePath)))
 	if err != nil {
-		fmt.Println("Error checking history:", err)
+		log.Printf("error checking history: %v", err)
 		return nil
 	}
 
 	if alreadyDownloaded {
-		fmt.Println("Album already downloaded. Skipping.")
+		log.Printf("album already downloaded, skipping: %s", albumID)
 		return nil
 	}
 
 	if skuID != 0 {
 		if cfg.SkipVideos {
-			fmt.Println("Video-only album, skipped.")
+			log.Printf("video-only album, skipped: %s", albumID)
 			return nil
 		}
 		if cfg.ForceVideo || trackTotal < 1 {
@@ -896,7 +896,7 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 	}
 
 	if cfg.VideoOnly {
-		fmt.Println("Audio only album, skipped.")
+		log.Printf("audio-only album, skipped: %s", albumID)
 		return nil
 	}
 
@@ -904,14 +904,13 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 	fmt.Println(albumFolder)
 	if len(albumFolder) > maxFolderNameLen {
 		albumFolder = albumFolder[:maxFolderNameLen]
-		fmt.Println(
-			"Album folder name was chopped because it exceeds 120 characters.")
+		log.Printf("album folder name truncated to %d characters", maxFolderNameLen)
 	}
 	albumPath := filepath.Join(cfg.OutPath, sanitise(albumFolder))
 
 	err = makeDirs(albumPath)
 	if err != nil {
-		fmt.Println("Failed to make album folder.")
+		log.Printf("failed to make album folder: %v", err)
 		return err
 	}
 	for trackNum, track := range tracks {
@@ -943,7 +942,7 @@ func getAlbumTotal(meta []*ArtistMeta) int {
 func artist(artistId string, cfg *Config, streamParams *StreamParams) error {
 	meta, err := getArtistMeta(artistId)
 	if err != nil {
-		fmt.Println("Failed to get artist metadata.")
+		log.Printf("failed to get artist metadata: %v", err)
 		return err
 	}
 	if len(meta) == 0 {
@@ -974,7 +973,7 @@ func artist(artistId string, cfg *Config, streamParams *StreamParams) error {
 func playlist(plistId, legacyToken string, cfg *Config, streamParams *StreamParams, cat bool) error {
 	_meta, err := getPlistMeta(plistId, cfg.Email, legacyToken, cat)
 	if err != nil {
-		fmt.Println("Failed to get playlist metadata.")
+		log.Printf("failed to get playlist metadata: %v", err)
 		return err
 	}
 	meta := _meta.Response
@@ -982,13 +981,12 @@ func playlist(plistId, legacyToken string, cfg *Config, streamParams *StreamPara
 	fmt.Println(plistName)
 	if len(plistName) > maxFolderNameLen {
 		plistName = plistName[:maxFolderNameLen]
-		fmt.Println(
-			"Playlist folder name was chopped because it exceeds 120 characters.")
+		log.Printf("playlist folder name truncated to %d characters", maxFolderNameLen)
 	}
 	plistPath := filepath.Join(cfg.OutPath, sanitise(plistName))
 	err = makeDirs(plistPath)
 	if err != nil {
-		fmt.Println("Failed to make playlist folder.")
+		log.Printf("failed to make playlist folder: %v", err)
 		return err
 	}
 	trackTotal := len(meta.Items)
@@ -1386,7 +1384,7 @@ func video(videoID, uguID string, cfg *Config, streamParams *StreamParams, _meta
 	} else {
 		m, err := getAlbumMeta(videoID)
 		if err != nil {
-			fmt.Println("Failed to get metadata.")
+			log.Printf("failed to get video metadata: %v", err)
 			return err
 		}
 		meta = m.Response
@@ -1394,12 +1392,12 @@ func video(videoID, uguID string, cfg *Config, streamParams *StreamParams, _meta
 
 	alreadyDownloaded, err := checkHistory(videoID, getHistoryFileName(meta.ArtistID, historySuffixVideo, filepath.Dir(cfg.StateFilePath)))
 	if err != nil {
-		fmt.Println("Error checking history:", err)
+		log.Printf("error checking history: %v", err)
 		return nil
 	}
 
 	if alreadyDownloaded {
-		fmt.Println("Album already downloaded. Skipping.")
+		log.Printf("video already downloaded, skipping: %s", videoID)
 		return nil
 	}
 
@@ -1411,8 +1409,7 @@ func video(videoID, uguID string, cfg *Config, streamParams *StreamParams, _meta
 	fmt.Println(videoFname)
 	if len(videoFname) > maxVideoFilenameLen {
 		videoFname = videoFname[:maxVideoFilenameLen]
-		fmt.Println(
-			"Video filename was chopped because it exceeds 110 characters.")
+		log.Printf("video filename truncated to %d characters", maxVideoFilenameLen)
 	}
 	if isLstream {
 		skuID = getLstreamSku(meta.ProductFormatList)
@@ -1430,14 +1427,14 @@ func video(videoID, uguID string, cfg *Config, streamParams *StreamParams, _meta
 	}
 
 	if err != nil {
-		fmt.Println("Failed to get video file metadata.")
+		log.Printf("failed to get video file metadata: %v", err)
 		return err
 	} else if manifestUrl == "" {
 		return errors.New("the api didn't return a video manifest url")
 	}
 	variant, retRes, err := chooseVariant(manifestUrl, cfg.WantRes)
 	if err != nil {
-		fmt.Println("Failed to get video master manifest.")
+		log.Printf("failed to get video master manifest: %v", err)
 		return err
 	}
 	vidPathNoExt := filepath.Join(cfg.OutPath, sanitise(videoFname+"_"+retRes))
@@ -1445,22 +1442,22 @@ func video(videoID, uguID string, cfg *Config, streamParams *StreamParams, _meta
 	vidPath := vidPathNoExt + ".mp4"
 	exists, err := fileExists(vidPath)
 	if err != nil {
-		fmt.Println("Failed to check if video already exists locally.")
+		log.Printf("failed to check if video already exists: %v", err)
 		return err
 	}
 	if exists {
-		fmt.Println("Video already exists locally.")
+		log.Printf("video already exists locally: %s", vidPath)
 		return nil
 	}
 	manBaseUrl, query, err := getManifestBase(manifestUrl)
 	if err != nil {
-		fmt.Println("Failed to get video manifest base URL.")
+		log.Printf("failed to get video manifest base URL: %v", err)
 		return err
 	}
 
 	segUrls, err := getSegUrls(manBaseUrl+variant.URI, query)
 	if err != nil {
-		fmt.Println("Failed to get video segment URLs.")
+		log.Printf("failed to get video segment URLs: %v", err)
 		return err
 	}
 
@@ -1478,31 +1475,31 @@ func video(videoID, uguID string, cfg *Config, streamParams *StreamParams, _meta
 		err = downloadVideo(VidPathTs, manBaseUrl+segUrls[0])
 	}
 	if err != nil {
-		fmt.Println("Failed to download video segments.")
+		log.Printf("failed to download video segments: %v", err)
 		return err
 	}
 	if chapsAvail {
 		dur, err := getDuration(VidPathTs, cfg.FfmpegNameStr)
 		if err != nil {
-			fmt.Println("Failed to get TS duration.")
+			log.Printf("failed to get TS duration: %v", err)
 			return err
 		}
 		err = writeChapsFile(meta.VideoChapters, dur)
 		if err != nil {
-			fmt.Println("Failed to write chapters file.")
+			log.Printf("failed to write chapters file: %v", err)
 			return err
 		}
 		defer os.Remove(chapsFileFname)
 	}
-	fmt.Println("Putting into MP4 container...")
+	log.Printf("putting into MP4 container")
 	err = tsToMp4(VidPathTs, vidPath, cfg.FfmpegNameStr, chapsAvail)
 	if err != nil {
-		fmt.Println("Failed to put TS into MP4 container.")
+		log.Printf("failed to put TS into MP4 container: %v", err)
 		return err
 	}
 	err = os.Remove(VidPathTs)
 	if err != nil {
-		fmt.Println("Failed to delete TS.")
+		log.Printf("failed to delete TS: %v", err)
 	}
 
 	// append the item to the history

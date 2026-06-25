@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"os"
 )
 
@@ -15,6 +16,7 @@ func loadState(path string) PollState {
 	}
 	var s PollState
 	if err := json.Unmarshal(f, &s); err != nil {
+		log.Printf("[poll] WARN: state file %q is corrupt or unreadable — starting fresh: %v", path, err)
 		return make(PollState)
 	}
 	return s
