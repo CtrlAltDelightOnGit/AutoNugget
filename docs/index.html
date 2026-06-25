@@ -489,9 +489,14 @@
     Run this on your Unraid terminal (or any Linux host with Docker). Values are pulled from the Config Generator — fill that in first.
   </p>
 
+  <div class="cbrow" style="margin-bottom:12px">
+    <input type="checkbox" id="install-dryrun" onchange="genInstall()">
+    <label for="install-dryrun">Dry-run first (test your watchlist without downloading) <span style="color:var(--muted)">— generates a one-shot command; run it before the daemon</span></label>
+  </div>
+
   <div class="out-block">
     <div class="out-header">
-      <span class="out-title">docker run <span class="out-sub">— start the AutoNugget daemon</span></span>
+      <span class="out-title" id="install-cmd-title">docker run <span class="out-sub">— start the AutoNugget daemon</span></span>
       <button class="btn-copy" onclick="doCopy('out-install',this)">Copy</button>
     </div>
     <pre class="out" id="out-install"></pre>
@@ -701,19 +706,34 @@ function buildWriteCmd(json) {
 function genInstall() {
   const configPath = document.getElementById('c-write-path').value ||
     '/mnt/user/appdata/autonugget/config.json';
+  const dryRun = document.getElementById('install-dryrun').checked;
 
-  const cmd =
-    `docker run -d \\\n` +
-    `  --name autonugget \\\n` +
-    `  --restart unless-stopped \\\n` +
-    `  -v /mnt/user:/mnt/user \\\n` +
-    `  -v ${configPath}:/app/config.json:ro \\\n` +
-    `  ghcr.io/ctrlaltdelightongit/autonugget:latest`;
+  let cmd;
+  if (dryRun) {
+    cmd =
+      `docker run --rm \\\n` +
+      `  -v /mnt/user:/mnt/user \\\n` +
+      `  -v ${configPath}:/app/config.json:ro \\\n` +
+      `  ghcr.io/ctrlaltdelightongit/autonugget:latest poll --dry-run`;
+    document.getElementById('install-cmd-title').innerHTML =
+      `docker run <span class="out-sub">— dry-run test (one-shot, no downloads)</span>`;
+  } else {
+    cmd =
+      `docker run -d \\\n` +
+      `  --name autonugget \\\n` +
+      `  --restart unless-stopped \\\n` +
+      `  -v /mnt/user:/mnt/user \\\n` +
+      `  -v ${configPath}:/app/config.json:ro \\\n` +
+      `  ghcr.io/ctrlaltdelightongit/autonugget:latest`;
+    document.getElementById('install-cmd-title').innerHTML =
+      `docker run <span class="out-sub">— start the AutoNugget daemon</span>`;
+  }
 
   document.getElementById('out-install').textContent = cmd;
 
-  const showWatchtower = document.getElementById('install-watchtower').checked;
+  const showWatchtower = !dryRun && document.getElementById('install-watchtower').checked;
   document.getElementById('watchtower-block').style.display = showWatchtower ? 'block' : 'none';
+  document.getElementById('install-watchtower').parentElement.style.display = dryRun ? 'none' : '';
 }
 
 function goToInstall() {

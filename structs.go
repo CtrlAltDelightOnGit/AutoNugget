@@ -28,6 +28,7 @@ type Config struct {
 	NotifyWebhookURL string          `json:"notifyWebhookUrl"`
 	NotifyWebhookType string         `json:"notifyWebhookType"` // "discord" | "slack" | "generic"
 	StateFilePath    string          `json:"stateFilePath"`
+	DryRun           bool            `json:"-"`
 }
 
 type WatchedArtist struct {

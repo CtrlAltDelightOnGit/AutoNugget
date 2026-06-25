@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"time"
 )
@@ -30,6 +31,11 @@ func runPollMode() {
 	if err != nil {
 		log.Fatalf("Failed to read config.: %v", err)
 	}
+	for _, arg := range os.Args[2:] {
+		if arg == "--dry-run" {
+			cfg.DryRun = true
+		}
+	}
 	if err := validatePollConfig(cfg); err != nil {
 		log.Fatalf("[poll] config error: %v", err)
 	}
@@ -54,6 +60,9 @@ func runPollMode() {
 		log.Fatalf("[poll] Failed to initialize session: %v", err)
 	}
 
+	if cfg.DryRun {
+		log.Printf("[poll] *** DRY RUN MODE — no downloads will occur ***")
+	}
 	fmt.Println("Poll mode — authenticated. Starting watcher.")
 	runPoller(cfg, streamParams)
 }
@@ -128,6 +137,16 @@ func pollOnce(cfg *Config, streamParams *StreamParams, stateFile string) {
 				}
 				albumIDStr := strconv.Itoa(container.ContainerID)
 				log.Printf("[poll] NEW release: %s — %s (ID: %s)", wa.Name, container.ContainerInfo, albumIDStr)
+
+				if cfg.DryRun {
+					log.Printf("[poll] DRY RUN — would download: %s container %d (%s)", wa.Name, container.ContainerID, container.ContainerInfo)
+					markKnown(state, wa.ArtistID, container.ContainerID)
+					knownSet[container.ContainerID] = true
+					if err := saveState(stateFile, state); err != nil {
+						log.Printf("[poll] ERROR saving state: %v", err)
+					}
+					continue
+				}
 
 				// album() re-fetches full metadata when albumID is non-empty (correct path for tracks)
 				if err := album(albumIDStr, &artistCfg, streamParams, nil); err != nil {
