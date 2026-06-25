@@ -1338,7 +1338,11 @@ func writeChapsFile(chapters []interface{}, dur int) error {
 				return err
 			}
 		}
-		_, err = f.WriteString("TITLE=" + m["chaptername"].(string) + "\n")
+		chapName, ok := m["chaptername"].(string)
+		if !ok {
+			chapName = ""
+		}
+		_, err = f.WriteString("TITLE=" + chapName + "\n")
 		if err != nil {
 			return err
 		}
