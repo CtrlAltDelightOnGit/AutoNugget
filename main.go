@@ -703,7 +703,16 @@ func hlsOnly(trackPath, manUrl, ffmpegNameStr string) error {
 	if err != nil {
 		return err
 	}
-	media := playlist.(*m3u8.MediaPlaylist)
+	media, ok := playlist.(*m3u8.MediaPlaylist)
+	if !ok {
+		return errors.New("expected media playlist")
+	}
+	if len(media.Segments) == 0 || media.Segments[0] == nil {
+		return errors.New("media playlist has no segments")
+	}
+	if media.Key == nil {
+		return errors.New("media playlist has no encryption key")
+	}
 
 	manBase, q, err := getManifestBase(manUrl)
 	if err != nil {
@@ -1119,7 +1128,10 @@ func getSegUrls(manifestUrl, query string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	media := playlist.(*m3u8.MediaPlaylist)
+	media, ok := playlist.(*m3u8.MediaPlaylist)
+	if !ok {
+		return nil, errors.New("expected media playlist, got master playlist")
+	}
 	for _, seg := range media.Segments {
 		if seg == nil {
 			break
@@ -1581,10 +1593,11 @@ func paidLstream(query, uguID string, cfg *Config, streamParams *StreamParams) e
 	if err != nil {
 		return err
 	}
-	showId := q["showID"][0]
-	if showId == "" {
+	vals := q["showID"]
+	if len(vals) == 0 || vals[0] == "" {
 		return errors.New("url didn't contain a show id parameter")
 	}
+	showId := vals[0]
 	err = video(showId, uguID, cfg, streamParams, nil, true)
 	return err
 }
