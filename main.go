@@ -621,6 +621,9 @@ func parseHlsMaster(qual *Quality) error {
 	sort.Slice(master.Variants, func(x, y int) bool {
 		return master.Variants[x].Bandwidth > master.Variants[y].Bandwidth
 	})
+	if len(master.Variants) == 0 {
+		return errors.New("master playlist has no variants")
+	}
 	variantUri := master.Variants[0].URI
 	bitrate := extractBitrate(variantUri)
 	if bitrate == "" {
@@ -796,17 +799,19 @@ func processTrack(folPath string, trackNum, trackTotal int, cfg *Config, track *
 			return err
 		}
 	} else {
-		for {
+		for i := 0; i < 10; i++ {
 			chosenQual = getTrackQual(quals, wantFmt)
 			if chosenQual != nil {
 				break
-			} else {
-				// Fallback quality.
-				wantFmt = trackFallback[wantFmt]
 			}
+			next := trackFallback[wantFmt]
+			if next == 0 {
+				break
+			}
+			wantFmt = next
 		}
 		if chosenQual == nil {
-			return errors.New("no track format was chosen")
+			return errors.New("no available track format matched request or fallbacks")
 		}
 		if wantFmt != origWantFmt && origWantFmt != 4 {
 			log.Printf("unavailable in your chosen format, using fallback")
@@ -1057,18 +1062,27 @@ func chooseVariant(manifestUrl, wantRes string) (*m3u8.Variant, string, error) {
 		return master.Variants[x].Bandwidth > master.Variants[y].Bandwidth
 	})
 	if wantRes == "2160" {
+		if len(master.Variants) == 0 {
+			return nil, "", errors.New("master playlist has no variants")
+		}
 		variant := master.Variants[0]
-		varRes := strings.SplitN(variant.Resolution, "x", 2)[1]
-		varRes = formatRes(varRes)
+		parts := strings.SplitN(variant.Resolution, "x", 2)
+		if len(parts) != 2 {
+			return nil, "", fmt.Errorf("unexpected resolution format: %q", variant.Resolution)
+		}
+		varRes := formatRes(parts[1])
 		return variant, varRes, nil
 	}
-	for {
+	for i := 0; i < 10; i++ {
 		wantVariant = getVidVariant(master.Variants, wantRes)
 		if wantVariant != nil {
 			break
-		} else {
-			wantRes = resFallback[wantRes]
 		}
+		next := resFallback[wantRes]
+		if next == "" {
+			break
+		}
+		wantRes = next
 	}
 	if wantVariant == nil {
 		return nil, "", errors.New("No variant was chosen.")
@@ -1224,8 +1238,8 @@ func getDuration(tsPath, ffmpegNameStr string) (int, error) {
 	cmd.Stderr = &errBuffer
 	// Return code's always 1 as we're not providing any output files.
 	err := cmd.Run()
-	if err.Error() != "exit status 1" {
-		return 0, err
+	if err == nil || err.Error() != "exit status 1" {
+		return 0, fmt.Errorf("unexpected ffmpeg exit: %w", err)
 	}
 	errStr := errBuffer.String()
 	ok := strings.HasSuffix(
