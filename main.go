@@ -559,13 +559,15 @@ func queryQuality(streamUrl string) *Quality {
 }
 
 func downloadTrack(trackPath, _url string) error {
-	f, err := os.OpenFile(trackPath, os.O_CREATE|os.O_WRONLY, 0755)
+	tmpPath := trackPath + ".tmp"
+	f, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY, 0755)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 	req, err := http.NewRequest(http.MethodGet, _url, nil)
 	if err != nil {
+		f.Close()
+		os.Remove(tmpPath)
 		return err
 	}
 	req.Header.Add("Referer", playerUrl)
@@ -573,10 +575,14 @@ func downloadTrack(trackPath, _url string) error {
 	req.Header.Add("Range", "bytes=0-")
 	do, err := dlClient.Do(req)
 	if err != nil {
+		f.Close()
+		os.Remove(tmpPath)
 		return err
 	}
 	defer do.Body.Close()
 	if do.StatusCode != http.StatusOK && do.StatusCode != http.StatusPartialContent {
+		f.Close()
+		os.Remove(tmpPath)
 		return errors.New(do.Status)
 	}
 	totalBytes := do.ContentLength
@@ -585,9 +591,14 @@ func downloadTrack(trackPath, _url string) error {
 		TotalStr:  humanize.Bytes(uint64(totalBytes)),
 		StartTime: time.Now().UnixMilli(),
 	}
-	_, err = io.Copy(f, io.TeeReader(do.Body, counter))
+	_, copyErr := io.Copy(f, io.TeeReader(do.Body, counter))
 	fmt.Println("")
-	return err
+	f.Close()
+	if copyErr != nil {
+		os.Remove(tmpPath)
+		return copyErr
+	}
+	return os.Rename(tmpPath, trackPath)
 }
 
 func getTrackQual(quals []*Quality, wantFmt int) *Quality {
