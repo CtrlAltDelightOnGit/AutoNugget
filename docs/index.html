@@ -503,6 +503,11 @@
     <label for="install-dryrun">Dry-run first (test your watchlist without downloading) <span style="color:var(--muted)">— generates a one-shot command; run it before the daemon</span></label>
   </div>
 
+  <div class="cbrow" style="margin-bottom:12px">
+    <input type="checkbox" id="install-video" onchange="genInstall()">
+    <label for="install-video">Watchlist includes video content <span style="color:var(--muted)">— adds <code style="font-family:monospace">--stop-timeout 600</code> so Docker waits for long video downloads before killing the container</span></label>
+  </div>
+
   <div class="out-block">
     <div class="out-header">
       <span class="out-title" id="install-cmd-title">docker run <span class="out-sub">— start the AutoNugget daemon</span></span>
@@ -720,6 +725,7 @@ function genInstall() {
   const configPath = document.getElementById('c-write-path').value ||
     '/mnt/user/appdata/autonugget/config.json';
   const dryRun = document.getElementById('install-dryrun').checked;
+  const hasVideo = document.getElementById('install-video').checked;
 
   let cmd;
   if (dryRun) {
@@ -741,6 +747,7 @@ function genInstall() {
       `docker run -d \\\n` +
       `  --name autonugget \\\n` +
       `  --restart unless-stopped \\\n` +
+      (hasVideo ? `  --stop-timeout 600 \\\n` : ``) +
       `  -v /mnt/user:/mnt/user \\\n` +
       `  -v ${configPath}:/app/config.json:ro \\\n` +
       `  ghcr.io/ctrlaltdelightongit/autonugget:latest`;

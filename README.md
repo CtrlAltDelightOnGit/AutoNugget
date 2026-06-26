@@ -40,8 +40,8 @@ Place `config.json` in the same directory as the binary. A minimal poll mode con
   "password": "yourpassword",
   "format": 2,
   "videoFormat": 3,
-  "outPath": "downloads",
-  "useFfmpegEnvVar": false,
+  "outPath": "/mnt/user/media/Nugs",
+  "useFfmpegEnvVar": true,
   "watchlist": [
     {"artistId": "196", "name": "Phish", "format": -1, "videoFormat": -1, "backfillAll": false},
     {"artistId": "297", "name": "Dead & Company", "format": 2, "videoFormat": -1, "backfillAll": false}
@@ -49,11 +49,11 @@ Place `config.json` in the same directory as the binary. A minimal poll mode con
   "pollIntervalMins": 60,
   "notifyWebhookUrl": "https://discord.com/api/webhooks/YOUR_WEBHOOK",
   "notifyWebhookType": "discord",
-  "stateFilePath": "auto_nugget_state.json"
+  "stateFilePath": "/mnt/user/appdata/autonugget/state.json"
 }
 ```
 
-> **Docker users:** Set `"useFfmpegEnvVar": true` — ffmpeg is in the container PATH, not the binary directory.
+> **Windows / Linux users:** Use local paths instead — `"outPath": "downloads"`, `"stateFilePath": "auto_nugget_state.json"`, and `"useFfmpegEnvVar": false` (or omit it).
 
 ### 2. Config Field Reference
 
@@ -213,8 +213,8 @@ No build step required — pull the pre-built image directly:
 
 ```bash
 mkdir -p /mnt/user/appdata/autonugget
-# Create config.json — use the Setup Tools page or copy the example above.
-# Ensure "outPath": "downloads" and "useFfmpegEnvVar": true
+# Create /mnt/user/appdata/autonugget/config.json
+# Use the Setup Tools page or copy the example above — paths already match the broad mount.
 ```
 
 **2. Pull and run:**
@@ -223,13 +223,13 @@ mkdir -p /mnt/user/appdata/autonugget
 docker run -d \
   --name autonugget \
   --restart unless-stopped \
+  --stop-timeout 600 \
+  -v /mnt/user:/mnt/user \
   -v /mnt/user/appdata/autonugget/config.json:/app/config.json:ro \
-  -v /mnt/user/appdata/autonugget/state.json:/app/auto_nugget_state.json \
-  -v /mnt/user/media/Nugs:/app/downloads \
   ghcr.io/ctrlaltdelightongit/autonugget:latest
 ```
 
-> **Video users:** If your watchlist includes video content, add `--stop-timeout 600` to your `docker run` command (or set **Stop Timeout** to `600` in Unraid's container settings). AutoNugget handles SIGTERM gracefully, but video downloads can take 10–30 minutes — Docker's default 10 s grace period sends SIGKILL mid-download, leaving a partial file that is cleaned up on the next poll cycle.
+> **`--stop-timeout 600`:** Video downloads can take 10–30 minutes. This gives AutoNugget time to finish a download gracefully on `docker stop`. Docker's default 10 s sends SIGKILL mid-download; the partial file is cleaned up on the next poll cycle but the download must repeat. Unraid users: set **Stop Timeout** to `600` in container settings instead.
 
 The container defaults to poll mode. For one-off CLI downloads, install a wrapper script so you can just type `nugs-dl <url>`:
 
@@ -237,8 +237,8 @@ The container defaults to poll mode. For one-off CLI downloads, install a wrappe
 cat > /usr/local/bin/nugs-dl << 'EOF'
 #!/bin/sh
 docker run --rm \
+  -v /mnt/user:/mnt/user \
   -v /mnt/user/appdata/autonugget/config.json:/app/config.json:ro \
-  -v /mnt/user/media/Nugs:/app/downloads \
   ghcr.io/ctrlaltdelightongit/autonugget:latest "$@"
 EOF
 chmod +x /usr/local/bin/nugs-dl
@@ -326,7 +326,7 @@ FFmpeg is required for TS → MP4 conversion (videos) and HLS-only tracks.
 
 **Windows:** Download a GPL build from [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds/releases). Place `ffmpeg.exe` in the same directory as `nugs-dl.exe`, or set `useFfmpegEnvVar: true` in config.json to use an FFmpeg already on your PATH.
 
-**Linux:** `sudo apt install ffmpeg`
+**Linux:** `sudo apt install ffmpeg`, then set `"useFfmpegEnvVar": true` in your config.json (ffmpeg will be on PATH, not in the binary directory).
 
 ---
 
