@@ -176,7 +176,7 @@ func getScriptDir() (string, error) {
 
 func readTxtFile(path string) ([]string, error) {
 	var lines []string
-	f, err := os.OpenFile(path, os.O_RDONLY, 0755)
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
@@ -396,16 +396,23 @@ func getPlan(subInfo *SubInfo) (string, bool) {
 	}
 }
 
-func parseTimestamps(start, end string) (string, string) {
-	startTime, _ := time.Parse(layout, start)
-	endTime, _ := time.Parse(layout, end)
-	parsedStart := strconv.FormatInt(startTime.Unix(), 10)
-	parsedEnd := strconv.FormatInt(endTime.Unix(), 10)
-	return parsedStart, parsedEnd
+func parseTimestamps(start, end string) (string, string, error) {
+	startTime, err := time.Parse(layout, start)
+	if err != nil {
+		return "", "", fmt.Errorf("parseTimestamps start: %w", err)
+	}
+	endTime, err := time.Parse(layout, end)
+	if err != nil {
+		return "", "", fmt.Errorf("parseTimestamps end: %w", err)
+	}
+	return strconv.FormatInt(startTime.Unix(), 10), strconv.FormatInt(endTime.Unix(), 10), nil
 }
 
-func parseStreamParams(userId string, subInfo *SubInfo, isPromo bool) *StreamParams {
-	startStamp, endStamp := parseTimestamps(subInfo.StartedAt, subInfo.EndsAt)
+func parseStreamParams(userId string, subInfo *SubInfo, isPromo bool) (*StreamParams, error) {
+	startStamp, endStamp, err := parseTimestamps(subInfo.StartedAt, subInfo.EndsAt)
+	if err != nil {
+		return nil, err
+	}
 	streamParams := &StreamParams{
 		SubscriptionID:          subInfo.LegacySubscriptionID,
 		SubCostplanIDAccessList: subInfo.Plan.PlanID,
@@ -418,7 +425,7 @@ func parseStreamParams(userId string, subInfo *SubInfo, isPromo bool) *StreamPar
 	} else {
 		streamParams.SubCostplanIDAccessList = subInfo.Plan.PlanID
 	}
-	return streamParams
+	return streamParams, nil
 }
 
 func checkUrl(_url string) (string, int) {
@@ -1685,7 +1692,10 @@ func initSession(cfg *Config) (token string, subInfo *SubInfo, streamParams *Str
 		return "", nil, nil, err
 	}
 	_, isPromo := getPlan(subInfo)
-	streamParams = parseStreamParams(userId, subInfo, isPromo)
+	streamParams, err = parseStreamParams(userId, subInfo, isPromo)
+	if err != nil {
+		return "", nil, nil, err
+	}
 	return token, subInfo, streamParams, nil
 }
 
