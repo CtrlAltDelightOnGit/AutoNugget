@@ -41,15 +41,10 @@ Place `config.json` in the same directory as the binary. A minimal poll mode con
   "format": 2,
   "videoFormat": 3,
   "outPath": "downloads",
+  "useFfmpegEnvVar": false,
   "watchlist": [
-    {
-      "artistId": "196",
-      "name": "Phish",
-      "format": -1,
-      "videoFormat": -1,
-      "backfillAll": false,
-      "outPath": ""
-    }
+    {"artistId": "196", "name": "Phish", "format": -1, "videoFormat": -1, "backfillAll": false},
+    {"artistId": "297", "name": "Dead & Company", "format": 2, "videoFormat": -1, "backfillAll": false}
   ],
   "pollIntervalMins": 60,
   "notifyWebhookUrl": "https://discord.com/api/webhooks/YOUR_WEBHOOK",
@@ -57,6 +52,8 @@ Place `config.json` in the same directory as the binary. A minimal poll mode con
   "stateFilePath": "auto_nugget_state.json"
 }
 ```
+
+> **Docker users:** Set `"useFfmpegEnvVar": true` — ffmpeg is in the container PATH, not the binary directory.
 
 ### 2. Config Field Reference
 
@@ -71,6 +68,10 @@ Place `config.json` in the same directory as the binary. A minimal poll mode con
 | `videoFormat` | int | `5` | Global video download quality. See format table below. |
 | `outPath` | string | `"Nugs downloads"` | Download directory. Created automatically if it doesn't exist. |
 | `useFfmpegEnvVar` | bool | `false` | `true` = use `ffmpeg` from PATH. `false` = use `./ffmpeg` from binary directory. |
+| `skipVideos` | bool | `false` | Skip video content. Useful for poll mode deployments that want audio-only downloads. |
+| `forceVideo` | bool | `false` | Force video download when an artist page has both audio and video releases. |
+| `videoOnly` | bool | `false` | Download video only on artist pages, skipping audio releases. |
+| `skipChapters` | bool | `false` | Skip writing chapter markers for video downloads. |
 
 **Poll mode settings:**
 
@@ -110,6 +111,8 @@ Place `config.json` in the same directory as the binary. A minimal poll mode con
 | `4` | 360 Reality Audio / best available |
 | `5` | 150 Kbps AAC |
 
+> **Note on format 4 (360 Reality Audio):** This is a proprietary spatial audio format. Many players fall back to a lower-quality stream when 360RA is not natively supported. For lossless archival, prefer format 1 (ALAC) or 2 (FLAC).
+
 **Video (`videoFormat`):**
 
 | Value | Quality |
@@ -123,6 +126,17 @@ Place `config.json` in the same directory as the binary. A minimal poll mode con
 ---
 
 ## Poll Mode
+
+### Poll Flags
+
+```
+nugs-dl poll [flags]
+```
+
+| Flag | Description |
+|---|---|
+| `--dry-run` | Log what would be downloaded without downloading anything. Useful for verifying your watchlist before first deployment. |
+| `--config <path>` | Path to config.json (default: `config.json` in the current directory). |
 
 ### Finding Artist IDs
 
@@ -155,6 +169,41 @@ Leave `notifyWebhookUrl` blank to disable notifications entirely — downloads w
 ```
 
 To run unattended, set up a Task Scheduler task that runs `nugs-dl.exe poll` at startup or on a schedule. The process runs indefinitely and polls on its own interval — you don't need to schedule the poll cycles, just the initial launch.
+
+**Updating:** Download the new binary from the [Releases page](https://github.com/CtrlAltDelightOnGit/AutoNugget/releases/latest), replace the existing `nugs-dl-windows-amd64.exe`, and restart the Task Scheduler task.
+
+### Running on Linux
+
+Make the binary executable and run:
+
+```bash
+chmod +x nugs-dl-linux-amd64
+./nugs-dl-linux-amd64 poll
+```
+
+To run unattended via systemd, create `/etc/systemd/system/autonugget.service`:
+
+```ini
+[Unit]
+Description=AutoNugget Nugs.net poller
+After=network-online.target
+
+[Service]
+ExecStart=/opt/autonugget/nugs-dl-linux-amd64 poll
+WorkingDirectory=/opt/autonugget
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl enable --now autonugget
+```
+
+Place your `config.json` in `/opt/autonugget/` alongside the binary, or pass `--config /path/to/config.json` to use a different location.
+
+**Updating:** Download the new binary from the [Releases page](https://github.com/CtrlAltDelightOnGit/AutoNugget/releases/latest), replace the existing binary, and restart: `sudo systemctl restart autonugget`
 
 ### Running on Docker / Unraid
 
@@ -219,6 +268,8 @@ On the **first** poll cycle for a new watchlist entry:
 
 The state file (`stateFilePath`) records which releases have been seen. It is written after each successful individual download — if the process is interrupted mid-cycle, the next run retries any releases not yet recorded.
 
+AutoNugget also writes history files (`<artistId>_Aud_history.txt` and `<artistId>_Vid_history.txt`) in the same directory as the state file. These track download URLs and guard against re-downloads even if the state file is reset. Do not delete the history files — they are the secondary guard against re-downloading content you already have.
+
 ---
 
 ## CLI Mode
@@ -282,6 +333,8 @@ FFmpeg is required for TS → MP4 conversion (videos) and HLS-only tracks.
 ## Apple / Google Account Auth
 
 If your Nugs.net account is linked to Apple or Google, use a `token` instead of `email`/`password`. See [token.md](token.md) for instructions on extracting your token.
+
+For **unattended poll mode**, also set `email` and `password` alongside `token`. Nugs.net tokens expire after approximately 10 hours. When AutoNugget detects a 401 response, it automatically re-authenticates using your email and password. Without credentials, a token-only daemon will stop downloading at token expiry and require a manual restart.
 
 ---
 
