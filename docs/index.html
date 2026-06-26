@@ -713,7 +713,7 @@ function buildWriteCmd(json) {
       : 'C:\\autonugget\\config.json');
 
   if (cfgPlatform === 'linux') {
-    return `cat > ${path} << 'EOF'\n${json}\nEOF`;
+    return `cat > "${path}" << 'EOF'\n${json}\nEOF`;
   } else {
     // PowerShell here-string: closing '@ must be at column 0
     return `@'\n${json}\n'@ | Set-Content -Path "${path}" -Encoding UTF8`;
@@ -729,10 +729,20 @@ function genInstall() {
 
   let cmd;
   if (dryRun) {
+    const configJson = document.getElementById('out-cfg').textContent.trim();
+    if (!configJson) {
+      alert('Generate your config on the Config tab first, then return here.');
+      return;
+    }
+    const appDir = configPath.lastIndexOf('/') > 0
+      ? configPath.substring(0, configPath.lastIndexOf('/'))
+      : '/mnt/user/appdata/autonugget';
     cmd =
+      `mkdir -p ${appDir}\n` +
+      `cat > "${configPath}" << 'NUGSEOF'\n${configJson}\nNUGSEOF\n` +
       `docker run --rm \\\n` +
       `  -v /mnt/user:/mnt/user \\\n` +
-      `  -v ${configPath}:/app/config.json:ro \\\n` +
+      `  -v "${configPath}":/app/config.json:ro \\\n` +
       `  ghcr.io/ctrlaltdelightongit/autonugget:latest poll --dry-run`;
     document.getElementById('install-cmd-title').innerHTML =
       `docker run <span class="out-sub">— dry-run test (one-shot, no downloads)</span>`;
@@ -747,7 +757,7 @@ function genInstall() {
       : '/mnt/user/appdata/autonugget';
     cmd =
       `mkdir -p ${appDir}\n` +
-      `cat > ${configPath} << 'NUGSEOF'\n${configJson}\nNUGSEOF\n` +
+      `cat > "${configPath}" << 'NUGSEOF'\n${configJson}\nNUGSEOF\n` +
       `docker rm -f autonugget 2>/dev/null || true\n` +
       `docker pull ghcr.io/ctrlaltdelightongit/autonugget:latest\n` +
       `docker run -d \\\n` +
@@ -755,7 +765,7 @@ function genInstall() {
       `  --restart unless-stopped \\\n` +
       (hasVideo ? `  --stop-timeout 600 \\\n` : ``) +
       `  -v /mnt/user:/mnt/user \\\n` +
-      `  -v ${configPath}:/app/config.json:ro \\\n` +
+      `  -v "${configPath}":/app/config.json:ro \\\n` +
       `  ghcr.io/ctrlaltdelightongit/autonugget:latest`;
     document.getElementById('install-cmd-title').innerHTML =
       `Install script <span class="out-sub">— safe to run on first install or re-install</span>`;
