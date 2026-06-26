@@ -96,16 +96,20 @@ var (
 	}()
 )
 
-var qualityMap = map[string]Quality{
-	".alac16/": {Specs: "16-bit / 44.1 kHz ALAC", Extension: ".m4a", Format: 1},
-	".flac16/": {Specs: "16-bit / 44.1 kHz FLAC", Extension: ".flac", Format: 2},
-	// .mqa24/ must be above .flac?
-	".mqa24/":  {Specs: "24-bit / 48 kHz MQA", Extension: ".flac", Format: 3},
-	".flac?": {Specs: "FLAC", Extension: ".flac", Format: 2},
-	".s360/":   {Specs: "360 Reality Audio", Extension: ".mp4", Format: 4},
-	".aac150/": {Specs: "150 Kbps AAC", Extension: ".m4a", Format: 5},
-	".m4a?": {Specs: "AAC", Extension: ".m4a", Format: 5},
-	".m3u8?":	{Extension: ".m4a", Format: 6},
+// qualityOrder is checked top-to-bottom; more-specific substrings must precede
+// less-specific ones (e.g. .mqa24/ before .flac? — both match MQA stream URLs).
+var qualityOrder = []struct {
+	key string
+	q   Quality
+}{
+	{".mqa24/", Quality{Specs: "24-bit / 48 kHz MQA", Extension: ".flac", Format: 3}},
+	{".alac16/", Quality{Specs: "16-bit / 44.1 kHz ALAC", Extension: ".m4a", Format: 1}},
+	{".flac16/", Quality{Specs: "16-bit / 44.1 kHz FLAC", Extension: ".flac", Format: 2}},
+	{".flac?", Quality{Specs: "FLAC", Extension: ".flac", Format: 2}},
+	{".s360/", Quality{Specs: "360 Reality Audio", Extension: ".mp4", Format: 4}},
+	{".aac150/", Quality{Specs: "150 Kbps AAC", Extension: ".m4a", Format: 5}},
+	{".m4a?", Quality{Specs: "AAC", Extension: ".m4a", Format: 5}},
+	{".m3u8?", Quality{Extension: ".m4a", Format: 6}},
 }
 
 var resolveRes = map[int]string{
@@ -548,14 +552,14 @@ func getStreamMeta(trackId, skuId, format int, streamParams *StreamParams) (stri
 	return obj.StreamLink, nil
 }
 
-func queryQuality(streamUrl string) *Quality {
-	for k, v := range qualityMap {
-		if strings.Contains(streamUrl, k) {
-			v.URL = streamUrl
-			return &v
+func queryQuality(streamUrl string) (Quality, error) {
+	for _, entry := range qualityOrder {
+		if strings.Contains(streamUrl, entry.key) {
+			entry.q.URL = streamUrl
+			return entry.q, nil
 		}
 	}
-	return nil
+	return Quality{}, errors.New("unable to determine quality from stream URL")
 }
 
 func downloadTrack(trackPath, _url string) error {
@@ -800,12 +804,12 @@ func processTrack(folPath string, trackNum, trackTotal int, cfg *Config, track *
 		if r.url == "" {
 			return errors.New("the api didn't return a track stream URL")
 		}
-		quality := queryQuality(r.url)
-		if quality == nil {
+		quality, qualErr := queryQuality(r.url)
+		if qualErr != nil {
 			log.Printf("API returned unsupported format, URL: %s", r.url)
 			continue
 		}
-		quals = append(quals, quality)
+		quals = append(quals, &quality)
 	}
 
 	if len(quals) == 0 {
