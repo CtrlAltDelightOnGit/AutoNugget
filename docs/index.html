@@ -755,6 +755,8 @@ function genInstall() {
     const appDir = configPath.lastIndexOf('/') > 0
       ? configPath.substring(0, configPath.lastIndexOf('/'))
       : '/mnt/user/appdata/autonugget';
+    const stateDir = (document.getElementById('c-state').value.trim() || '/mnt/user/appdata/autonugget/state.json').replace(/\/[^/]+$/, '');
+    const outDir = document.getElementById('c-out').value.trim() || '/mnt/user/media/Nugs';
     cmd =
       `mkdir -p "${appDir}"\n` +
       `cat > "${configPath}" << 'NUGSEOF'\n${configJson}\nNUGSEOF\n` +
@@ -764,7 +766,8 @@ function genInstall() {
       `  --name autonugget \\\n` +
       `  --restart unless-stopped \\\n` +
       (hasVideo ? `  --stop-timeout 600 \\\n` : ``) +
-      `  -v /mnt/user:/mnt/user \\\n` +
+      `  -v "${outDir}":"${outDir}" \\\n` +
+      `  -v "${stateDir}":"${stateDir}" \\\n` +
       `  -v "${configPath}":/app/config.json:ro \\\n` +
       `  ghcr.io/ctrlaltdelightongit/autonugget:latest`;
     document.getElementById('install-cmd-title').innerHTML =
@@ -787,12 +790,15 @@ function goToInstall() {
 function genCliWrapper() {
   const configPath = document.getElementById('c-write-path').value ||
     '/mnt/user/appdata/autonugget/config.json';
+  const stateDir = (document.getElementById('c-state').value.trim() || '/mnt/user/appdata/autonugget/state.json').replace(/\/[^/]+$/, '');
+  const outDir = document.getElementById('c-out').value.trim() || '/mnt/user/media/Nugs';
 
   const wrapper =
     `cat > /usr/local/bin/nugs-dl << 'EOF'\n` +
     `#!/bin/sh\n` +
     `docker run --rm \\\n` +
-    `  -v /mnt/user:/mnt/user \\\n` +
+    `  -v "${outDir}":"${outDir}" \\\n` +
+    `  -v "${stateDir}":"${stateDir}" \\\n` +
     `  -v "${configPath}":/app/config.json:ro \\\n` +
     `  ghcr.io/ctrlaltdelightongit/autonugget:latest "$@"\n` +
     `EOF\n` +
