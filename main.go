@@ -297,7 +297,7 @@ func readConfig(path string) (*Config, error) {
 }
 
 func makeDirs(path string) error {
-	err := os.MkdirAll(path, 0755)
+	err := os.MkdirAll(path, 0775)
 	return err
 }
 
@@ -571,7 +571,7 @@ func queryQuality(streamUrl string) (Quality, error) {
 
 func downloadTrack(trackPath, _url string) error {
 	tmpPath := trackPath + ".tmp"
-	f, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY, 0755)
+	f, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		return err
 	}
@@ -1193,7 +1193,7 @@ func getSegUrls(manifestUrl, query string) ([]string, error) {
 }
 
 func downloadVideo(videoPath, _url string) error {
-	f, err := os.OpenFile(videoPath, os.O_CREATE|os.O_WRONLY, 0755)
+	f, err := os.OpenFile(videoPath, os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		return err
 	}
@@ -1239,7 +1239,7 @@ func downloadVideo(videoPath, _url string) error {
 }
 
 func downloadLstream(videoPath, baseUrl string, segUrls []string) error {
-	f, err := os.OpenFile(videoPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0755)
+	f, err := os.OpenFile(videoPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
 	if err != nil {
 		return err
 	}
@@ -1340,7 +1340,7 @@ func getNextChapStart(chapters []interface{}, idx int) float64 {
 
 
 func writeChapsFile(chapters []interface{}, dur int) error {
-	f, err := os.OpenFile(chapsFileFname, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0755)
+	f, err := os.OpenFile(chapsFileFname, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
 	if err != nil {
 		return err
 	}
