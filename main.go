@@ -751,9 +751,13 @@ func hlsOnly(trackPath, manUrl, ffmpegNameStr string) error {
 		return err
 	}
 
-	iv, err := hex.DecodeString(key.IV[2:])
+	ivHex := key.IV
+	if strings.HasPrefix(ivHex, "0x") || strings.HasPrefix(ivHex, "0X") {
+		ivHex = ivHex[2:]
+	}
+	iv, err := hex.DecodeString(ivHex)
 	if err != nil {
-		return err
+		return fmt.Errorf("hlsOnly: invalid IV %q: %w", key.IV, err)
 	}
 
 	err = downloadTrack("temp_enc.ts", tsUrl)
@@ -953,13 +957,20 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 		log.Printf("failed to make album folder: %v", err)
 		return err
 	}
+	tracksFailed := false
 	for trackNum, track := range tracks {
 		trackNum++
 		err := processTrack(
 			albumPath, trackNum, trackTotal, cfg, &track, streamParams)
 		if err != nil {
 			log.Printf("Track failed.: %v", err)
+			tracksFailed = true
 		}
+	}
+
+	if tracksFailed {
+		log.Printf("album() had failed tracks — skipping history record; will retry next cycle")
+		return nil
 	}
 
 	// append the item to the history
