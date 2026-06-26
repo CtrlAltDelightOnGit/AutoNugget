@@ -776,6 +776,7 @@ function genInstall() {
       `docker pull ghcr.io/ctrlaltdelightongit/autonugget:latest\n` +
       `docker run -d \\\n` +
       `  --name autonugget \\\n` +
+      `  --user 99:100 \\\n` +
       `  --restart unless-stopped \\\n` +
       (hasVideo ? `  --stop-timeout 600 \\\n` : ``) +
       `  -v "${outDir}":"${outDir}" \\\n` +
