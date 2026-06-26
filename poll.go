@@ -27,6 +27,9 @@ func validatePollConfig(cfg *Config) error {
 			return fmt.Errorf("poll: watchlist[%d] has invalid format %d (must be 1–5 or -1 for global)", i, wa.Format)
 		}
 	}
+	if cfg.Format != 0 && !(cfg.Format >= 1 && cfg.Format <= 5) {
+		return fmt.Errorf("poll: format %d is invalid — must be 1–5", cfg.Format)
+	}
 	if cfg.StateFilePath == "" {
 		return fmt.Errorf("poll: stateFilePath is required — set an absolute path in config.json")
 	}
@@ -106,9 +109,6 @@ func buildHistCache(watchlist []WatchedArtist, stateFilePath string) map[string]
 
 func runPoller(cfg *Config, streamParams *StreamParams) {
 	stateFile := cfg.StateFilePath
-	if stateFile == "" {
-		stateFile = defaultStateFile
-	}
 	interval := cfg.PollIntervalMins
 	if interval <= 0 {
 		interval = defaultPollIntervalMins

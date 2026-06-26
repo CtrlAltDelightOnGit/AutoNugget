@@ -59,7 +59,6 @@ const (
 	maxFolderNameLen    = 120
 	maxVideoFilenameLen = 110
 	// poll defaults
-	defaultStateFile        = "auto_nugget_state.json"
 	defaultPollIntervalMins = 60
 )
 
@@ -1626,7 +1625,7 @@ func getHistoryFileName(artistId int, hType, dir string) string {
 }
 
 func printBanner() {
-	fmt.Println(`
+	fmt.Print(`
  _             _     __ _  _            __    __   ___  _
 /_\     _  _  | |_ / _ \| \| |  _  _  / _' |/ _' |/ -_)| |_
 / _ \  | || | |  _|\___/| .' | | || | \__, |\__, |\___/|  _|
@@ -1673,11 +1672,11 @@ func initSession(cfg *Config) (token string, subInfo *SubInfo, streamParams *Str
 func main() {
 	scriptDir, err := getScriptDir()
 	if err != nil {
-		panic(err)
+		log.Fatalf("failed to resolve binary directory: %v", err)
 	}
 	err = os.Chdir(scriptDir)
 	if err != nil {
-		panic(err)
+		log.Fatalf("failed to change to binary directory: %v", err)
 	}
 	if v := os.Getenv("NUGS_DEV_KEY"); v != "" {
 		devKey = v
