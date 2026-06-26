@@ -121,10 +121,10 @@ var resolveRes = map[int]string{
 }
 
 var trackFallback = map[int]int{
-	1: 2,
-	2: 5,
-	3: 2,
-	4: 3,
+	1: 5, // ALAC → AAC (direct; avoids cycle if FLAC unavailable)
+	2: 1, // FLAC → ALAC
+	3: 2, // MQA → FLAC
+	4: 3, // 360 → MQA
 }
 
 var resFallback = map[string]string{
@@ -789,14 +789,14 @@ func processTrack(folPath string, trackNum, trackTotal int, cfg *Config, track *
 		quals      []*Quality
 		chosenQual *Quality
 	)
-	// Probe stream meta with 2 format IDs concurrently to discover available formats.
-	// Format IDs 4 and 7 cover FLAC and MQA — the primary audio formats for subscribers.
+	// Probe stream meta with all 4 format IDs concurrently to discover available formats.
+	// Format availability shifts per show — all 4 probes are needed for full coverage.
 	// Probes run concurrently; order is preserved.
 	type probeResult struct {
 		url string
 		err error
 	}
-	probes := [2]int{4, 7}
+	probes := [4]int{1, 4, 7, 10}
 	probeResults := make([]probeResult, len(probes))
 	var wg sync.WaitGroup
 	for i, fmtID := range probes {
@@ -810,11 +810,12 @@ func processTrack(folPath string, trackNum, trackTotal int, cfg *Config, track *
 	wg.Wait()
 	for _, r := range probeResults {
 		if r.err != nil {
-			log.Printf("failed to get track stream metadata: %v", r.err)
-			return r.err
+			log.Printf("format probe failed (skipping): %v", r.err)
+			continue
 		}
 		if r.url == "" {
-			return errors.New("the api didn't return a track stream URL")
+			log.Printf("format probe returned empty URL (skipping)")
+			continue
 		}
 		quality, qualErr := queryQuality(r.url)
 		if qualErr != nil {
@@ -850,7 +851,11 @@ func processTrack(folPath string, trackNum, trackTotal int, cfg *Config, track *
 			wantFmt = next
 		}
 		if chosenQual == nil {
-			return errors.New("no available track format matched request or fallbacks")
+			var available []string
+			for _, q := range quals {
+				available = append(available, q.Specs)
+			}
+			return fmt.Errorf("no available track format matched request or fallbacks; API returned: %v", available)
 		}
 		if wantFmt != origWantFmt && origWantFmt != 4 {
 			log.Printf("unavailable in your chosen format, using fallback")
