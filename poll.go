@@ -188,6 +188,10 @@ func pollOnce(cfg *Config, streamParams *StreamParams, stateFile string, histCac
 			artistIntID = -1
 		}
 
+		// Detect first backfill cycle: backfillAll=true with no prior state for this artist.
+		// Checked before any containers are marked known so the snapshot is accurate.
+		isBackfillCycle := wa.BackfillAll && len(state[wa.ArtistID]) == 0
+
 		knownSet := buildKnownSet(state[wa.ArtistID])
 		for _, meta := range containers {
 			for _, container := range meta.Response.Containers {
@@ -243,9 +247,11 @@ func pollOnce(cfg *Config, streamParams *StreamParams, stateFile string, histCac
 					log.Printf("[poll] ERROR saving state: %v", err)
 				}
 
-				msg := fmt.Sprintf("New release from %s: %s", wa.Name, container.ContainerInfo)
-				if notifyErr := sendNotification(cfg.NotifyWebhookURL, cfg.NotifyWebhookType, msg); notifyErr != nil {
-					log.Printf("[poll] ERROR sending notification: %v", notifyErr)
+				if !isBackfillCycle || cfg.NotifyOnBackfill {
+					msg := fmt.Sprintf("New release from %s: %s", wa.Name, container.ContainerInfo)
+					if notifyErr := sendNotification(cfg.NotifyWebhookURL, cfg.NotifyWebhookType, msg); notifyErr != nil {
+						log.Printf("[poll] ERROR sending notification: %v", notifyErr)
+					}
 				}
 			}
 		}

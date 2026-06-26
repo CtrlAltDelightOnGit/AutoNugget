@@ -26,9 +26,10 @@ type Config struct {
 	Watchlist        []WatchedArtist `json:"watchlist"`
 	PollIntervalMins     int             `json:"pollIntervalMins"`
 	ArtistCheckDelaySecs int             `json:"artistCheckDelaySecs,omitempty"`
-	NotifyWebhookURL string          `json:"notifyWebhookUrl"`
-	NotifyWebhookType string         `json:"notifyWebhookType"` // "discord" | "slack" | "generic"
-	StateFilePath    string          `json:"stateFilePath"`
+	NotifyWebhookURL    string          `json:"notifyWebhookUrl"`
+	NotifyWebhookType   string          `json:"notifyWebhookType"`   // "discord" | "slack" | "generic"
+	NotifyOnBackfill    bool            `json:"notifyOnBackfill"`    // false (default) = suppress notifications during backfill cycles
+	StateFilePath       string          `json:"stateFilePath"`
 	DryRun           bool            `json:"-"`
 }
 
