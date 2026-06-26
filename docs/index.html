@@ -742,6 +742,7 @@ function genInstall() {
     cmd =
       `mkdir -p "${appDir}"\n` +
       `cat > "${configPath}" << 'NUGSEOF'\n${configJson}\nNUGSEOF\n` +
+      `chmod 0600 "${configPath}"\n` +
       `docker run --rm \\\n` +
       `  -v "${outDir}":"${outDir}" \\\n` +
       `  -v "${stateDir}":"${stateDir}" \\\n` +
@@ -761,6 +762,7 @@ function genInstall() {
     cmd =
       `mkdir -p "${appDir}"\n` +
       `cat > "${configPath}" << 'NUGSEOF'\n${configJson}\nNUGSEOF\n` +
+      `chmod 0600 "${configPath}"\n` +
       `docker rm -f autonugget 2>/dev/null || true\n` +
       `docker pull ghcr.io/ctrlaltdelightongit/autonugget:latest\n` +
       `docker run -d \\\n` +
