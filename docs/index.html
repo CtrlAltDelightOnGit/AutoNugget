@@ -286,7 +286,7 @@
       <div class="field">
         <label for="c-out">Download Path</label>
         <input type="text" id="c-out" value="/mnt/user/media/Nugs" oninput="genConfig()">
-        <span class="hint" id="c-out-hint">Folder where downloads will be saved (e.g. <code style="font-family:monospace">/mnt/user/media/Nugs</code>)</span>
+        <span class="hint" id="c-out-hint">Folder where downloads will be saved (e.g. <code style="font-family:monospace">/mnt/user/media/Nugs</code>). Files are organized as: outPath / Artist Name / Date - Venue / Track.flac</span>
       </div>
       <div class="field" style="justify-content:flex-end">
         <div class="cbrow">
@@ -568,7 +568,7 @@ function setCfgPlatform(p, btn) {
 
   if (p === 'linux') {
     ffmpegCb.checked = true;
-    outHint.innerHTML = 'Folder where downloads will be saved (e.g. <code style="font-family:monospace">/mnt/user/media/Nugs</code>)';
+    outHint.innerHTML = 'Folder where downloads will be saved (e.g. <code style="font-family:monospace">/mnt/user/media/Nugs</code>). Files are organized as: outPath / Artist Name / Date - Venue / Track.flac';
     if (!outField.value || outField.value === 'C:\\Users\\YourName\\Nugs')
       outField.value = '/mnt/user/media/Nugs';
     if (!stateField.value || stateField.value === 'C:\\Users\\YourName\\autonugget\\state.json')
@@ -576,7 +576,7 @@ function setCfgPlatform(p, btn) {
     writePath.value = '/mnt/user/appdata/autonugget/config.json';
   } else {
     ffmpegCb.checked = false;
-    outHint.textContent = 'Relative or absolute path where files are saved';
+    outHint.textContent = 'Relative or absolute path where files are saved. Files are organized as: outPath / Artist Name / Date - Venue / Track.flac';
     if (!outField.value || outField.value === '/mnt/user/media/Nugs')
       outField.value = 'C:\\Users\\YourName\\Nugs';
     if (!stateField.value || stateField.value === '/mnt/user/appdata/autonugget/state.json')
