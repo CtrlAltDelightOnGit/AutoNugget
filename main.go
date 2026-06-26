@@ -895,7 +895,7 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 	alreadyDownloaded, err := checkHistory(albumID, getHistoryFileName(meta.ArtistID, historySuffix, filepath.Dir(cfg.StateFilePath)))
 	if err != nil {
 		log.Printf("error checking history: %v", err)
-		return nil
+		return err
 	}
 
 	if alreadyDownloaded {
@@ -1394,30 +1394,6 @@ func tsToMp4(VidPathTs, vidPath, ffmpegNameStr string, chapAvail bool) error {
 	return nil
 }
 
-func getLstreamContainer(containers []*AlbArtResp) *AlbArtResp {
-	for i := len(containers) - 1; i >= 0; i-- {
-		c := containers[i]
-		if c.AvailabilityTypeStr == "AVAILABLE" && c.ContainerTypeStr == "Show" {
-			return c
-		}
-	}
-	return nil
-}
-
-func parseLstreamMeta(_meta *ArtistMeta) *AlbumMeta {
-	meta := getLstreamContainer(_meta.Response.Containers)
-	parsed := &AlbumMeta{
-		Response: &AlbArtResp{
-			ArtistName:        meta.ArtistName,
-			ContainerInfo:     meta.ContainerInfo,
-			ContainerID:       meta.ContainerID,
-			VideoChapters:     meta.VideoChapters,
-			Products:          meta.Products,
-			ProductFormatList: meta.ProductFormatList,
-		},
-	}
-	return parsed
-}
 
 func video(videoID, uguID string, cfg *Config, streamParams *StreamParams, _meta *AlbArtResp, isLstream bool) error {
 
@@ -1443,7 +1419,7 @@ func video(videoID, uguID string, cfg *Config, streamParams *StreamParams, _meta
 	alreadyDownloaded, err := checkHistory(videoID, getHistoryFileName(meta.ArtistID, historySuffixVideo, filepath.Dir(cfg.StateFilePath)))
 	if err != nil {
 		log.Printf("error checking history: %v", err)
-		return nil
+		return err
 	}
 
 	if alreadyDownloaded {
