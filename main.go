@@ -1203,8 +1203,10 @@ func downloadVideo(videoPath, _url string) error {
 	}
 
 	if startByte > 0 {
+		if _, err = f.Seek(startByte, io.SeekStart); err != nil {
+			return err
+		}
 		fmt.Printf("TS already exists locally, resuming from byte %d...\n", startByte)
-		startByte = 0
 	}
 
 	totalBytes := do.ContentLength
