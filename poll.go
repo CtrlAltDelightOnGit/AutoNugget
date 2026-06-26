@@ -26,9 +26,15 @@ func validatePollConfig(cfg *Config) error {
 		if wa.Format != -1 && (wa.Format < 1 || wa.Format > 5) {
 			return fmt.Errorf("poll: watchlist[%d] has invalid format %d (must be 1–5 or -1 for global)", i, wa.Format)
 		}
+		if wa.VideoFormat != -1 && (wa.VideoFormat < 1 || wa.VideoFormat > 5) {
+			return fmt.Errorf("poll: watchlist[%d] has invalid videoFormat %d (must be 1–5 or -1 for global)", i, wa.VideoFormat)
+		}
 	}
 	if cfg.Format != 0 && !(cfg.Format >= 1 && cfg.Format <= 5) {
 		return fmt.Errorf("poll: format %d is invalid — must be 1–5", cfg.Format)
+	}
+	if cfg.VideoFormat != 0 && !(cfg.VideoFormat >= 1 && cfg.VideoFormat <= 5) {
+		return fmt.Errorf("poll: videoFormat %d is invalid — must be 1–5", cfg.VideoFormat)
 	}
 	if cfg.StateFilePath == "" {
 		return fmt.Errorf("poll: stateFilePath is required — set an absolute path in config.json")
@@ -171,6 +177,7 @@ func pollOnce(cfg *Config, streamParams *StreamParams, stateFile string, histCac
 		}
 		if wa.VideoFormat != -1 {
 			artistCfg.VideoFormat = wa.VideoFormat
+			artistCfg.WantRes = resolveRes[artistCfg.VideoFormat]
 		}
 		if wa.OutPath != "" {
 			artistCfg.OutPath = wa.OutPath
