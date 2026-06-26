@@ -970,7 +970,7 @@ func album(albumID string, cfg *Config, streamParams *StreamParams, artResp *Alb
 
 	if tracksFailed {
 		log.Printf("album() had failed tracks — skipping history record; will retry next cycle")
-		return nil
+		return errors.New("one or more tracks failed — will retry next cycle")
 	}
 
 	// append the item to the history
