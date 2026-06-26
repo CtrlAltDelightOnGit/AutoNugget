@@ -33,6 +33,13 @@ func validatePollConfig(cfg *Config) error {
 	if !filepath.IsAbs(cfg.StateFilePath) {
 		log.Printf("[poll] WARN: stateFilePath %q is a relative path — state and history files will be lost on container restart", cfg.StateFilePath)
 	}
+	if cfg.NotifyWebhookURL != "" {
+		switch cfg.NotifyWebhookType {
+		case "discord", "slack", "generic", "":
+		default:
+			return fmt.Errorf("poll: unknown notifyWebhookType %q — must be discord, slack, or generic", cfg.NotifyWebhookType)
+		}
+	}
 	return nil
 }
 

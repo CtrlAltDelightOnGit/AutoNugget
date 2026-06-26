@@ -64,8 +64,9 @@ const (
 )
 
 var (
-	jar, _               = cookiejar.New(nil)
-	client               = &http.Client{Jar: jar, Timeout: 30 * time.Second}
+	jar, _    = cookiejar.New(nil)
+	apiClient = &http.Client{Jar: jar, Timeout: 30 * time.Second}
+	dlClient  = &http.Client{Jar: jar}
 )
 
 var regexStrings = [11]string{
@@ -332,7 +333,7 @@ func auth(email, pwd string) (string, error) {
 	}
 	req.Header.Add("User-Agent", userAgent)
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	do, err := client.Do(req)
+	do, err := apiClient.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -357,7 +358,7 @@ func apiGet(rawURL, token, ua string, target interface{}) error {
 	if token != "" {
 		req.Header.Add("Authorization", "Bearer "+token)
 	}
-	do, err := client.Do(req)
+	do, err := apiClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -571,7 +572,7 @@ func downloadTrack(trackPath, _url string) error {
 	req.Header.Add("Referer", playerUrl)
 	req.Header.Add("User-Agent", userAgent)
 	req.Header.Add("Range", "bytes=0-")
-	do, err := client.Do(req)
+	do, err := dlClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -608,7 +609,7 @@ func extractBitrate(manUrl string) string {
 }
 
 func parseHlsMaster(qual *Quality) error {
-	req, err := client.Get(qual.URL)
+	req, err := apiClient.Get(qual.URL)
 	if err != nil {
 		return err
 	}
@@ -645,7 +646,7 @@ func parseHlsMaster(qual *Quality) error {
 	return nil
 }
 func getKey(keyUrl string) ([]byte, error) {
-	req, err := client.Get(keyUrl)
+	req, err := apiClient.Get(keyUrl)
 	if err != nil {
 		return nil, err
 	}
@@ -694,7 +695,7 @@ func tsToAac(decData []byte, outPath, ffmpegNameStr string) error {
 
 
 func hlsOnly(trackPath, manUrl, ffmpegNameStr string) error {
-	req, err := client.Get(manUrl)
+	req, err := apiClient.Get(manUrl)
 	if err != nil {
 		return err
 	}
@@ -1057,7 +1058,7 @@ func formatRes(res string) string {
 func chooseVariant(manifestUrl, wantRes string) (*m3u8.Variant, string, error) {
 	origWantRes := wantRes
 	var wantVariant *m3u8.Variant
-	req, err := client.Get(manifestUrl)
+	req, err := apiClient.Get(manifestUrl)
 	if err != nil {
 		return nil, "", err
 	}
@@ -1117,12 +1118,16 @@ func getManifestBase(manifestUrl string) (string, string, error) {
 	path := u.Path
 	lastPathIdx := strings.LastIndex(path, "/")
 	base := u.Scheme + "://" + u.Host + path[:lastPathIdx+1]
-	return base, "?" + u.RawQuery, nil
+	q := ""
+	if u.RawQuery != "" {
+		q = "?" + u.RawQuery
+	}
+	return base, q, nil
 }
 
 func getSegUrls(manifestUrl, query string) ([]string, error) {
 	var segUrls []string
-	req, err := client.Get(manifestUrl)
+	req, err := apiClient.Get(manifestUrl)
 	if err != nil {
 		return nil, err
 	}
@@ -1165,7 +1170,7 @@ func downloadVideo(videoPath, _url string) error {
 		return err
 	}
 	req.Header.Add("Range", fmt.Sprintf("bytes=%d-", startByte))
-	do, err := client.Do(req)
+	do, err := dlClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -1201,14 +1206,11 @@ func downloadLstream(videoPath, baseUrl string, segUrls []string) error {
 	for segNum, segUrl := range segUrls {
 		segNum++
 		fmt.Printf("\rSegment %d of %d.", segNum, segTotal)
-		if err != nil {
-			return err
-		}
 		req, err := http.NewRequest(http.MethodGet, baseUrl+segUrl, nil)
 		if err != nil {
 			return err
 		}
-		do, err := client.Do(req)
+		do, err := dlClient.Do(req)
 		if err != nil {
 			return err
 		}
@@ -1560,7 +1562,7 @@ func video(videoID, uguID string, cfg *Config, streamParams *StreamParams, _meta
 }
 
 func resolveCatPlistId(plistUrl string) (string, error) {
-	req, err := client.Get(plistUrl)
+	req, err := apiClient.Get(plistUrl)
 	if err != nil {
 		return "", err
 	}

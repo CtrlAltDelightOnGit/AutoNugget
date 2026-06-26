@@ -1,4 +1,4 @@
-module main
+module github.com/CtrlAltDelightOnGit/AutoNugget
 
 go 1.22.3
 
