@@ -738,7 +738,7 @@ function genInstall() {
       ? configPath.substring(0, configPath.lastIndexOf('/'))
       : '/mnt/user/appdata/autonugget';
     cmd =
-      `mkdir -p ${appDir}\n` +
+      `mkdir -p "${appDir}"\n` +
       `cat > "${configPath}" << 'NUGSEOF'\n${configJson}\nNUGSEOF\n` +
       `docker run --rm \\\n` +
       `  -v /mnt/user:/mnt/user \\\n` +
@@ -756,7 +756,7 @@ function genInstall() {
       ? configPath.substring(0, configPath.lastIndexOf('/'))
       : '/mnt/user/appdata/autonugget';
     cmd =
-      `mkdir -p ${appDir}\n` +
+      `mkdir -p "${appDir}"\n` +
       `cat > "${configPath}" << 'NUGSEOF'\n${configJson}\nNUGSEOF\n` +
       `docker rm -f autonugget 2>/dev/null || true\n` +
       `docker pull ghcr.io/ctrlaltdelightongit/autonugget:latest\n` +
@@ -793,7 +793,7 @@ function genCliWrapper() {
     `#!/bin/sh\n` +
     `docker run --rm \\\n` +
     `  -v /mnt/user:/mnt/user \\\n` +
-    `  -v ${configPath}:/app/config.json:ro \\\n` +
+    `  -v "${configPath}":/app/config.json:ro \\\n` +
     `  ghcr.io/ctrlaltdelightongit/autonugget:latest "$@"\n` +
     `EOF\n` +
     `chmod +x /usr/local/bin/nugs-dl`;
