@@ -726,6 +726,8 @@ function genInstall() {
     '/mnt/user/appdata/autonugget/config.json';
   const dryRun = document.getElementById('install-dryrun').checked;
   const hasVideo = document.getElementById('install-video').checked;
+  const stateDir = (document.getElementById('c-state').value.trim() || '/mnt/user/appdata/autonugget/state.json').replace(/\/[^/]+$/, '');
+  const outDir = document.getElementById('c-out').value.trim() || '/mnt/user/media/Nugs';
 
   let cmd;
   if (dryRun) {
@@ -741,7 +743,8 @@ function genInstall() {
       `mkdir -p "${appDir}"\n` +
       `cat > "${configPath}" << 'NUGSEOF'\n${configJson}\nNUGSEOF\n` +
       `docker run --rm \\\n` +
-      `  -v /mnt/user:/mnt/user \\\n` +
+      `  -v "${outDir}":"${outDir}" \\\n` +
+      `  -v "${stateDir}":"${stateDir}" \\\n` +
       `  -v "${configPath}":/app/config.json:ro \\\n` +
       `  ghcr.io/ctrlaltdelightongit/autonugget:latest poll --dry-run`;
     document.getElementById('install-cmd-title').innerHTML =
@@ -755,8 +758,6 @@ function genInstall() {
     const appDir = configPath.lastIndexOf('/') > 0
       ? configPath.substring(0, configPath.lastIndexOf('/'))
       : '/mnt/user/appdata/autonugget';
-    const stateDir = (document.getElementById('c-state').value.trim() || '/mnt/user/appdata/autonugget/state.json').replace(/\/[^/]+$/, '');
-    const outDir = document.getElementById('c-out').value.trim() || '/mnt/user/media/Nugs';
     cmd =
       `mkdir -p "${appDir}"\n` +
       `cat > "${configPath}" << 'NUGSEOF'\n${configJson}\nNUGSEOF\n` +
