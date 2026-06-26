@@ -753,6 +753,7 @@ function genInstall() {
       `cat > "${configPath}" << 'NUGSEOF'\n${configJson}\nNUGSEOF\n` +
       `chmod 0600 "${configPath}"\n` +
       `docker run --rm \\\n` +
+      `  --user 99:100 \\\n` +
       `  -v "${outDir}":"${outDir}" \\\n` +
       `  -v "${stateDir}":"${stateDir}" \\\n` +
       `  -v "${configPath}":/app/config.json:ro \\\n` +
@@ -773,6 +774,7 @@ function genInstall() {
       `cat > "${configPath}" << 'NUGSEOF'\n${configJson}\nNUGSEOF\n` +
       `chmod 0600 "${configPath}"\n` +
       `docker rm -f autonugget 2>/dev/null || true\n` +
+      `chown -R 99:100 "${appDir}" "${stateDir}" "${outDir}"\n` +
       `docker pull ghcr.io/ctrlaltdelightongit/autonugget:latest\n` +
       `docker run -d \\\n` +
       `  --name autonugget \\\n` +
@@ -788,6 +790,7 @@ function genInstall() {
       `cat > /usr/local/bin/nugs-dl << 'EOF'\n` +
       `#!/bin/sh\n` +
       `docker run --rm \\\n` +
+      `  --user 99:100 \\\n` +
       `  -v "${outDir}":"${outDir}" \\\n` +
       `  -v "${stateDir}":"${stateDir}" \\\n` +
       `  -v "${configPath}":/app/config.json:ro \\\n` +
