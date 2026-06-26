@@ -769,7 +769,18 @@ function genInstall() {
       `  -v "${outDir}":"${outDir}" \\\n` +
       `  -v "${stateDir}":"${stateDir}" \\\n` +
       `  -v "${configPath}":/app/config.json:ro \\\n` +
-      `  ghcr.io/ctrlaltdelightongit/autonugget:latest`;
+      `  ghcr.io/ctrlaltdelightongit/autonugget:latest\n` +
+      `\n` +
+      `# Install CLI wrapper\n` +
+      `cat > /usr/local/bin/nugs-dl << 'EOF'\n` +
+      `#!/bin/sh\n` +
+      `docker run --rm \\\n` +
+      `  -v "${outDir}":"${outDir}" \\\n` +
+      `  -v "${stateDir}":"${stateDir}" \\\n` +
+      `  -v "${configPath}":/app/config.json:ro \\\n` +
+      `  ghcr.io/ctrlaltdelightongit/autonugget:latest "$@"\n` +
+      `EOF\n` +
+      `chmod +x /usr/local/bin/nugs-dl`;
     document.getElementById('install-cmd-title').innerHTML =
       `Install script <span class="out-sub">— safe to run on first install or re-install</span>`;
   }
