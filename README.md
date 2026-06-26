@@ -260,6 +260,8 @@ docker restart autonugget                                      # restart after a
 docker pull ghcr.io/ctrlaltdelightongit/autonugget:latest && docker restart autonugget  # update
 ```
 
+> **Security note:** Alpine OS patches (openssl, libc, etc.) are only included in the image when a new AutoNugget version is released. Re-pull periodically to stay current on OS-level fixes.
+
 ### First-Run Behavior
 
 On the **first** poll cycle for a new watchlist entry:
