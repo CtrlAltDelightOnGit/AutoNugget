@@ -966,7 +966,9 @@ func artist(artistId string, cfg *Config, streamParams *StreamParams) error {
 		return errors.New(
 			"The API didn't return any artist metadata.")
 	}
-	fmt.Println(meta[0].Response.Containers[0].ArtistName)
+	if len(meta[0].Response.Containers) > 0 {
+		fmt.Println(meta[0].Response.Containers[0].ArtistName)
+	}
 	albumTotal := getAlbumTotal(meta)
 	albumNum := 0
 	for _, _meta := range meta {
