@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 )
 
 // PollState tracks which container IDs have been seen per artist.
@@ -23,6 +25,9 @@ func loadState(path string) PollState {
 }
 
 func saveState(path string, s PollState) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return fmt.Errorf("saveState mkdir: %w", err)
+	}
 	data, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return err

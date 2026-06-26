@@ -1589,6 +1589,9 @@ func paidLstream(query, uguID string, cfg *Config, streamParams *StreamParams) e
 
 // appendToHistory adds the URL to the history file.
 func appendToHistory(url, historyFile string) error {
+	if err := os.MkdirAll(filepath.Dir(historyFile), 0755); err != nil {
+		return fmt.Errorf("history write failed: mkdir: %w", err)
+	}
 	file, err := os.OpenFile(historyFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
