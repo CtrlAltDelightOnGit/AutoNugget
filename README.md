@@ -82,6 +82,7 @@ Place `config.json` in the same directory as the binary. A minimal poll mode con
 | `artistCheckDelaySecs` | int | `0` | Seconds to wait between artist checks within a poll cycle. Set to `2`–`5` if you have a large watchlist or aggressive poll interval to avoid rate limiting. Omit or set to `0` to disable. |
 | `notifyWebhookUrl` | string | `""` | Webhook URL for new-release notifications. Leave blank to disable. |
 | `notifyWebhookType` | string | `"discord"` | Webhook format: `"discord"`, `"slack"`, or `"generic"`. |
+| `notifyOnBackfill` | bool | `false` | Send notifications for releases downloaded during a first-run backfill (`backfillAll: true`). Default `false` — suppresses notification flood on large artist catalogs. Set `true` to notify for every historic release. |
 | `stateFilePath` | string | `"auto_nugget_state.json"` | Path to the state file that tracks already-seen releases. |
 
 **Watchlist entry fields:**

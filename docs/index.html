@@ -341,6 +341,13 @@
         <span class="hint">discord, slack, or generic JSON. Only used if a webhook URL is set.</span>
       </div>
     </div>
+    <div class="field" style="margin-top:8px">
+      <div class="cbrow">
+        <input type="checkbox" id="c-notify-backfill" onchange="genConfig()">
+        <label for="c-notify-backfill">Notify on backfill</label>
+      </div>
+      <span class="hint">Send notifications for historic releases downloaded during a first-run backfill (<code style="font-family:monospace">backfillAll: true</code>). Default off — prevents notification flood on large catalogs.</span>
+    </div>
   </div>
 
   <!-- Watchlist -->
@@ -698,6 +705,8 @@ function genConfig() {
 
   const artistDelay = parseInt(document.getElementById('c-artist-delay').value) || 0;
   if (artistDelay > 0) cfg.artistCheckDelaySecs = artistDelay;
+
+  if (document.getElementById('c-notify-backfill').checked) cfg.notifyOnBackfill = true;
 
   const json = JSON.stringify(cfg, null, 2);
   document.getElementById('out-cfg').textContent = json;
