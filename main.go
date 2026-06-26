@@ -785,13 +785,14 @@ func processTrack(folPath string, trackNum, trackTotal int, cfg *Config, track *
 		quals      []*Quality
 		chosenQual *Quality
 	)
-	// Call the stream meta endpoint four times to get all avail formats since the formats can shift.
-	// This will ensure the right format's always chosen. Probes run concurrently; order is preserved.
+	// Probe stream meta with 2 format IDs concurrently to discover available formats.
+	// Format IDs 4 and 7 cover FLAC and MQA — the primary audio formats for subscribers.
+	// Probes run concurrently; order is preserved.
 	type probeResult struct {
 		url string
 		err error
 	}
-	probes := [4]int{1, 4, 7, 10}
+	probes := [2]int{4, 7}
 	probeResults := make([]probeResult, len(probes))
 	var wg sync.WaitGroup
 	for i, fmtID := range probes {
