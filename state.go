@@ -25,7 +25,7 @@ func loadState(path string) PollState {
 }
 
 func saveState(path string, s PollState) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0775); err != nil {
 		return fmt.Errorf("saveState mkdir: %w", err)
 	}
 	data, err := json.MarshalIndent(s, "", "  ")
