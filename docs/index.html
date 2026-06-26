@@ -737,11 +737,17 @@ function genInstall() {
     document.getElementById('install-cmd-title').innerHTML =
       `docker run <span class="out-sub">— dry-run test (one-shot, no downloads)</span>`;
   } else {
+    const configJson = document.getElementById('out-cfg').textContent.trim();
+    if (!configJson) {
+      alert('Generate your config on the Config tab first, then return here.');
+      return;
+    }
     const appDir = configPath.lastIndexOf('/') > 0
       ? configPath.substring(0, configPath.lastIndexOf('/'))
       : '/mnt/user/appdata/autonugget';
     cmd =
       `mkdir -p ${appDir}\n` +
+      `cat > ${configPath} << 'NUGSEOF'\n${configJson}\nNUGSEOF\n` +
       `docker rm -f autonugget 2>/dev/null || true\n` +
       `docker pull ghcr.io/ctrlaltdelightongit/autonugget:latest\n` +
       `docker run -d \\\n` +
