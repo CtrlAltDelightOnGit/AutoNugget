@@ -23,8 +23,8 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
-	"sync"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alexflint/go-arg"
@@ -1719,6 +1719,7 @@ func initSession(cfg *Config) (token string, subInfo *SubInfo, streamParams *Str
 }
 
 func main() {
+	setUmask()
 	scriptDir, err := getScriptDir()
 	if err != nil {
 		log.Fatalf("failed to resolve binary directory: %v", err)
